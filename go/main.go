@@ -90,7 +90,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Erreur lors de l'écriture dans le fichier :", err)
 		return
+	} else {
+		fmt.Println("Un fichier resultat.json a été crée contenant les chemins les plus courts pour chaque sommet")
 	}
-
-	fmt.Println("Un fichier resultat.json a été crée contenant les chemins les plus courts pour chaque sommet")
 }
