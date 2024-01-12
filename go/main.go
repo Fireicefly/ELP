@@ -7,14 +7,6 @@ import (
 	"os"
 )
 
-flknalkfnlakflalkfaafaatu le saiss
-import (
-	"encoding/json"
-	"fmt"
-	"math"
-	"os"
-)
-
 type Graph map[string]map[string]int
 
 func Dijkstra(graph Graph, start string) map[string]int {
@@ -102,5 +94,3 @@ func main() {
 		fmt.Println("Un fichier resultat.json a été crée contenant les chemins les plus courts pour chaque sommet")
 	}
 }
-
-salut c moi tu le sais ,nsdjkfdnjcksncjksd
