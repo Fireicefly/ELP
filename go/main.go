@@ -1,4 +1,12 @@
 package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"os"
+)
+
 flknalkfnlakflalkfaafaatu le saiss
 import (
 	"encoding/json"
@@ -95,4 +103,4 @@ func main() {
 	}
 }
 
-salutc'esst moi,nsdjkfdnjcksncjksd
+salut c moi tu le sais ,nsdjkfdnjcksncjksd
