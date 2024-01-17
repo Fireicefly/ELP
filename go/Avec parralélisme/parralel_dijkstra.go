@@ -19,6 +19,13 @@ type Result struct {
 	Distances map[string]int
 }
 
+func is_there_an_error(err error, message string){
+	if err != nil {
+		fmt.Println(message, err)
+		return
+	}
+}
+
 func Dijkstra(graph Graph, start string) map[string]int {
 	distances := make(map[string]int)
 	visited := make(map[string]bool)
@@ -71,19 +78,13 @@ var graph Graph // Déclaration de graph comme variable globale
 func main() {
 	// Lecture du fichier JSON
 	byteValue, err := os.ReadFile("graph.json")
-	if err != nil {
-		fmt.Println("Erreur lors de la lecture du fichier JSON :", err)
-		return
-	}
+	is_there_an_error(err, "Erreur lors de la lecture du fichier JSON :")
 
+	var graph Graph
 	err = json.Unmarshal(byteValue, &graph)
-	if err != nil {
-		fmt.Println("Erreur lors du décodage du fichier JSON :", err)
-		return
-	}
+	is_there_an_error(err, "Erreur lors du décodage du fichier JSON :")
 
 	const numWorkers = 8
-
 	var wg sync.WaitGroup
 
 	// Créer les canaux pour les jobs et les résultats
@@ -123,23 +124,12 @@ func main() {
 	}
 
 	resultJSON, err := json.Marshal(allResults)
-	if err != nil {
-		fmt.Println("Erreur lors de la conversion en JSON :", err)
-		return
-	}
+	is_there_an_error(err, "Erreur lors de la conversion en JSON :")
 
 	file, err := os.Create("resultat.json")
-	if err != nil {
-		fmt.Println("Erreur lors de la création du fichier :", err)
-		return
-	}
+	is_there_an_error(err, "Erreur lors de la création du fichier :")
 	defer file.Close()
 
 	_, err = file.Write(resultJSON)
-	if err != nil {
-		fmt.Println("Erreur lors de l'écriture dans le fichier :", err)
-		return
-	} else {
-		fmt.Println("Un fichier resultat.json a été créé contenant les chemins les plus courts pour chaque sommet")
-	}
+	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
 }
