@@ -1,9 +1,5 @@
--- Press a button to send a GET request for random quotes.
---
--- Read how it works:
---   https://guide.elm-lang.org/effects/json.html
---
-module HTTP exposing (..)
+module Main exposing (..)
+
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (style)
@@ -11,128 +7,59 @@ import Html.Events exposing (..)
 import Http
 import Json.Decode exposing (Decoder, map4, field, int, string)
 
-
-
--- MAIN
-
-
-main =
-  Browser.element
-    { init = init
-    , update = update
-    , subscriptions = subscriptions
-    , view = view
-    }
-
-
-
 -- MODEL
 
-
 type Model
-  = Failure
-  | Loading
-  | Success Quote
-
-
-type alias Quote =
-  { quote : String
-  , source : String
-  , author : String
-  , year : Int
-  }
-
+    = Loading
+    | Loaded String
+    | Failed
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  (Loading, getRandomQuote)
-
-
+  (Loading, fetchData)
 
 -- UPDATE
 
-
 type Msg
-  = MorePlease
-  | GotQuote (Result Http.Error Quote)
+    = GotDef(Result Http.Error String)
 
-
-update : Msg -> Model -> (Model, Cmd Msg)
+update :  Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  case msg of
-    MorePlease ->
-      (Loading, getRandomQuote)
-
-    GotQuote result ->
-      case result of
-        Ok quote ->
-          (Success quote, Cmd.none)
-
-        Err _ ->
-          (Failure, Cmd.none)
-
-
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-  Sub.none
-
-
+    case msg of
+        GotDef (Ok data) ->
+            (Loaded data, Cmd.none)
+        GotDef (Err _) ->
+            (Failed, Cmd.none)
 
 -- VIEW
 
-
 view : Model -> Html Msg
 view model =
-  div []
-    [ h2 [] [ text "Random Quotes" ]
-    , viewQuote model
-    ]
+    case model of
+        Loading ->
+            div [] [ text "Chargement..." ]
 
+        Loaded definition ->
+            div [] [ text definition ]
 
-viewQuote : Model -> Html Msg
-viewQuote model =
-  case model of
-    Failure ->
-      div []
-        [ text "I could not load a random quote for some reason. "
-        , button [ onClick MorePlease ] [ text "Try Again!" ]
-        ]
+        Failed ->
+            div [] [ text "Échec du chargement" ]
 
-    Loading ->
-      text "Loading..."
+-- MAIN
 
-    Success quote ->
-      div []
-        [ button [ onClick MorePlease, style "display" "block" ] [ text "More Please!" ]
-        , blockquote [] [ text quote.quote ]
-        , p [ style "text-align" "right" ]
-            [ text "— "
-            , cite [] [ text quote.source ]
-            , text (" by " ++ quote.author ++ " (" ++ String.fromInt quote.year ++ ")")
-            ]
-        ]
-
+main =
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = \_ -> Sub.none
+        }
 
 
 -- HTTP
-
-
-getRandomQuote : Cmd Msg
-getRandomQuote =
-  Http.get
-    { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + "hello"
-    , expect = Http.expectJson GotQuote quoteDecoder
-    }
-
-
-quoteDecoder : Decoder Quote
-quoteDecoder =
-  map4 Quote
-    (field "quote" string)
-    (field "source" string)
-    (field "author" string)
-    (field "year" int)
+fetchData : Cmd Msg
+fetchData =
+    Http.get
+        { url = "https://api.dictionaryapi.dev/api/v2/entries/en/hello"
+        , expect = Http.expectString GotDef 
+        }
