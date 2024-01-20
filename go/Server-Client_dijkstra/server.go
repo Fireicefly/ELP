@@ -2,9 +2,18 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net"
+	"os"
+	"strings"
 	"sync"
+)
+
+const (
+    serverAddress = "localhost:8080"
+    maxWorker     = 5
 )
 
 // Graph représente la structure du graphe pondéré.
@@ -27,7 +36,7 @@ type WorkerPool struct {
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
 		fmt.Println(errorMessage, err)
-		panic(err)
+		os.Exit(1)
 	}
 }
 
@@ -39,94 +48,107 @@ func NewWorkerPool(size int) *WorkerPool {
 	}
 }
 
-// CalculateShortestPath ajoute une tâche au pool pour calculer le plus court chemin.
-// func (wp *WorkerPool) CalculateShortestPath(router string, graph Graph) {
-// 	wp.wg.Add(1)
-// 	wp.workers <- struct{}{}
+func Dijkstra(graph Graph, start string) map[string]int {
+	distances := make(map[string]int)
+	visited := make(map[string]bool)
 
-// 	go func(router string, graph Graph) {
-// 		defer wp.wg.Done()
+	// Initialisation des distances avec une valeur infinie et du point de départ à 0
+	for node := range graph {
+		distances[node] = math.MaxInt32
+	}
+	distances[start] = 0
 
-// 		distances := dijkstra(graph, router)
+	for i := 0; i < len(graph); i++ {
+		u := minDistance(distances, visited)
+		visited[u] = true
 
-// 		wp.resultChan <- Result{
-// 			Router:    router,
-// 			Distances: distances,
-// 		}
-
-// 		<-wp.workers
-// 	}(router, graph)
-// }
-
-// WaitForResult attend que toutes les tâches soient terminées et retourne les résultats.
-func (wp *WorkerPool) WaitForResult() []Result {
-	wp.wg.Wait()
-	close(wp.resultChan)
-
-	var results []Result
-	for result := range wp.resultChan {
-		results = append(results, result)
+		for v, weight := range graph[u] {
+			if !visited[v] && distances[u] != math.MaxInt32 && distances[u]+weight < distances[v] {
+				distances[v] = distances[u] + weight
+			}
+		}
 	}
 
-	return results
+	return distances
+}
+
+func minDistance(distances map[string]int, visited map[string]bool) string {
+	minimum := math.MaxInt32
+	var minNode string
+
+	for node, dist := range distances {
+		if !visited[node] && dist <= minimum {
+			minimum = dist
+			minNode = node
+		}
+	}
+	return minNode
 }
 
 // handleClient gère les connexions des clients.
 func handleClient(conn net.Conn, wp *WorkerPool) {
-	// defer conn.Close()
 
-	// var graph Graph
-	// var message string
-	// // Lire le dictionnaire d'adjacence depuis la connexion
-	// decoder := json.NewDecoder(conn)
-	// err := decoder.Decode(&graph)
-	// is_there_an_error(err, "Erreur de lecture du dictionnaire d'adjacence:")
-
-	// router := "A" // Remplacez par la logique appropriée
-
-	// // Calculer le plus court chemin vers tous les autres nœuds
-	// wp.CalculateShortestPath(router, graph)
-
-	// // Attendre la fin des tâches et récupérer les résultats
-	// results := wp.WaitForResult()
-
-	// // Envoyer les résultats au client
-	// encoder := json.NewEncoder(conn)
-	// err = encoder.Encode(results)
-	// is_there_an_error(err, "Erreur lors de l'envoi des résultats au client:")
+	defer wp.wg.Done()
 	defer conn.Close()
 
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		client_ID := scanner.Text()
-		fmt.Println("Client connecté avec ID :", client_ID)
+	router_name := receive_string(conn)
+	fmt.Println("Connexion effectuée avec :", router_name)
+	var graph Graph = receive_json(conn)
+	fmt.Println("Données JSON reçues :", graph)
 
-		response := "Connection acceptée\n"
-		conn.Write([]byte(response))
-	}
-	err := scanner.Err()
-	is_there_an_error(err, "Erreur lors de la lecture de la chaîne:")
+	distances := Dijkstra(graph, router_name)
+
+	encoder := json.NewEncoder(conn)
+	err := encoder.Encode(distances)
+	is_there_an_error(err, "Erreur lors de l'envoi des résultats au client:")
+	fmt.Println("Données envoyées à ", router_name, ":", distances)
+
+}
+
+func receive_json(conn net.Conn) Graph {
+	var graph Graph
+
+	decoder := json.NewDecoder(conn)
+	err := decoder.Decode(&graph)
+	is_there_an_error(err, "Erreur lors de la réception des données JSON :")
+
+	return graph
+}
+
+func receive_string(conn net.Conn) string {
+
+	reader := bufio.NewReader(conn)
+	data, err := reader.ReadString('\n')
+	fmt.Println(data)
+	is_there_an_error(err, "Erreur lors de la réception de la chaîne de caractères :")
+
+	data = strings.TrimSpace(data)
+
+	return data
+}
+
+func send_json(conn net.Conn, data Graph) {
+
+	encoder := json.NewEncoder(conn)
+	err := encoder.Encode(data)
+	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
 }
 
 func main() {
-	// Créer un pool de workers avec une taille de max_worker
-	max_worker := 5
-	wp := NewWorkerPool(max_worker)
+	
+	wp := NewWorkerPool(maxWorker)
 
-	// Configurer le serveur TCP
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", serverAddress)
 	is_there_an_error(err, "Erreur lors de la création du serveur:")
 
 	defer listener.Close()
 
 	fmt.Println("Serveur démarré sur http://localhost:8080")
 
-	// Accepter les connexions des clients
 	for {
 		conn, err := listener.Accept()
 		is_there_an_error(err, "Erreur lors de l'acceptation de la connexion:")
-
-		// Gérer la connexion client dans une goroutine
+		wp.wg.Add(1)
 		go handleClient(conn, wp)
 	}
 }
