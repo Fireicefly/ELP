@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 )
 
 type Graph map[string]map[string]int
@@ -18,8 +19,6 @@ func is_there_an_error(err error, errorMessage string) {
 
 func Open_Json(file_name string) Graph {
 
-	fmt.Println("Fichier en cours d'ouverture...")
-
 	jsonData, err := os.Open(file_name)
 	is_there_an_error(err, "Erreur lors de l'ouverture du fichier JSON :")
 	defer jsonData.Close()
@@ -29,18 +28,13 @@ func Open_Json(file_name string) Graph {
 	err = decoder.Decode(&graph)
 	is_there_an_error(err, "Erreur lors de la lecture du fichier JSON :")
 
-	fmt.Println("Fichier ouvert.")
-
 	return graph
 }
 
 func make_conn(router_name string) net.Conn {
 
-	fmt.Println("Connexion avec localhost:8080 en cours...")
-
 	conn, err := net.Dial("tcp", "localhost:8080")
 	is_there_an_error(err, "Erreur lors de la connexion au serveur:")
-	//defer conn.Close()
 
 	send_string(conn, router_name)
 
@@ -64,13 +58,9 @@ func receive_json(conn net.Conn) map[string]int {
 
 func send_json(conn net.Conn, data Graph) {
 
-	fmt.Println("Fichier en cours d'envoi...")
-
 	encoder := json.NewEncoder(conn)
 	err := encoder.Encode(data)
 	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
-
-	fmt.Println("Fichier envoyé.")
 }
 
 func send_string(conn net.Conn, data string) {
@@ -81,8 +71,6 @@ func send_string(conn net.Conn, data string) {
 
 func write_json(distances map[string]int) {
 
-	fmt.Println("Fichier en cours d'écriture.")
-
 	resultJSON, err := json.Marshal(distances)
 	is_there_an_error(err, "Erreur lors de la conversion en JSON :")
 
@@ -92,14 +80,14 @@ func write_json(distances map[string]int) {
 
 	_, err = file.Write(resultJSON)
 	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
-
-	fmt.Println("Fichier crée.")
 }
 
 func main() {
 
-	router_name := "O"
-	file_name := "graph.json"
+	start := time.Now()
+
+	router_name := "R1"
+	file_name := "generated_graph.json"
 
 	graph := Open_Json(file_name)
 	conn := make_conn(router_name)
@@ -110,4 +98,6 @@ func main() {
 
 	write_json(distances)
 
+	elapsed := time.Since(start)
+	fmt.Println("Temps d'execution :", elapsed)
 }

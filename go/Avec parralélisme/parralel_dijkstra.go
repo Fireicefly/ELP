@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"sync"
+	"time"
 )
 
 type Graph map[string]map[string]int
@@ -19,10 +20,10 @@ type Result struct {
 	Distances map[string]int
 }
 
-func is_there_an_error(err error, message string){
+func is_there_an_error(err error, message string) {
 	if err != nil {
 		fmt.Println(message, err)
-		return
+		os.Exit(1)
 	}
 }
 
@@ -30,13 +31,12 @@ func Dijkstra(graph Graph, start string) map[string]int {
 	distances := make(map[string]int)
 	visited := make(map[string]bool)
 
-	// Initialisation des distances avec une valeur infinie et du point de départ à 0
 	for node := range graph {
 		distances[node] = math.MaxInt32
 	}
 	distances[start] = 0
 
-	for i := 0; i < len(graph); i++ {
+	for range graph {
 		u := minDistance(distances, visited)
 		visited[u] = true
 
@@ -63,7 +63,7 @@ func minDistance(distances map[string]int, visited map[string]bool) string {
 	return minNode
 }
 
-func worker(jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup) {
+func worker(jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup, graph Graph) {
 	defer wg.Done()
 
 	for job := range jobs {
@@ -73,31 +73,48 @@ func worker(jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup) {
 	}
 }
 
-var graph Graph // Déclaration de graph comme variable globale
+func openJson(file_name string) Graph {
 
-func main() {
-	// Lecture du fichier JSON
-	byteValue, err := os.ReadFile("graph.json")
+	jsonData, err := os.Open(file_name)
+	is_there_an_error(err, "Erreur lors de l'ouverture du fichier JSON :")
+	defer jsonData.Close()
+
+	var graph map[string]map[string]int
+	decoder := json.NewDecoder(jsonData)
+	err = decoder.Decode(&graph)
 	is_there_an_error(err, "Erreur lors de la lecture du fichier JSON :")
 
-	var graph Graph
-	err = json.Unmarshal(byteValue, &graph)
-	is_there_an_error(err, "Erreur lors du décodage du fichier JSON :")
+	return graph
+}
 
-	const numWorkers = 8
+func writeJson(allResults map[string]map[string]int) {
+	resultJSON, err := json.Marshal(allResults)
+	is_there_an_error(err, "Error converting to JSON:")
+
+	file, err := os.Create("resultat.json")
+	is_there_an_error(err, "Error creating file:")
+	defer file.Close()
+
+	_, err = file.Write(resultJSON)
+	is_there_an_error(err, "Error writing to file:")
+}
+
+func main() {
+
+	start := time.Now()
+
+	graph := openJson("generated_graph.json")
+
+	const numWorkers = 6
 	var wg sync.WaitGroup
-
-	// Créer les canaux pour les jobs et les résultats
 	jobs := make(chan Job, len(graph))
 	results := make(chan Result, len(graph))
 
-	// Créer un pool de goroutines (workers)
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go worker(jobs, results, &wg)
+		go worker(jobs, results, &wg, graph)
 	}
 
-	// Envoyer des jobs aux workers
 	go func() {
 		for node := range graph {
 			job := Job{NodeID: node}
@@ -106,30 +123,18 @@ func main() {
 		close(jobs)
 	}()
 
-	// Attendre que tous les workers aient terminé leur travail
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
 	allResults := make(map[string]map[string]int)
-	// Récupérer les résultats des workers
+
 	for result := range results {
 		allResults[result.NodeID] = result.Distances
-		fmt.Println("Distances les plus courtes depuis le nœud", result.NodeID+" :")
-		for destNode, distance := range result.Distances {
-			fmt.Printf("De %s à %s: %d\n", result.NodeID, destNode, distance)
-		}
-		fmt.Println()
 	}
 
-	resultJSON, err := json.Marshal(allResults)
-	is_there_an_error(err, "Erreur lors de la conversion en JSON :")
-
-	file, err := os.Create("resultat.json")
-	is_there_an_error(err, "Erreur lors de la création du fichier :")
-	defer file.Close()
-
-	_, err = file.Write(resultJSON)
-	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
+	writeJson(allResults)
+	elapsed := time.Since(start)
+	fmt.Println("Temps d'execution :", elapsed)
 }
