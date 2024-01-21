@@ -61,14 +61,36 @@ findDef model =
 
 
             Loaded_def definitions->                
+                let
+                    defs = afficherDefinitions definitions.meanings
+                in
                 
-                div [] [text (definitions.word)]
+                    div [] [text (defs)]
                 
                     
 
 
             Failed ->
                 div [] [ text "Échec du chargement" ]
+
+
+
+
+afficherDefinitions : List Meaning -> String
+afficherDefinitions defs =
+    let 
+        defsString = convertListMeaningToListListString defs
+    in
+        List.indexedMap (\index sublist ->
+            "Définition " ++ String.fromInt (index + 1) ++ " :\n" ++
+            String.join "\n" (List.map (\element -> "\t" ++ element) sublist)
+        ) defsString
+        |> String.join "\n\n"
+
+-- Convertir List Meaning en List (List String)
+convertListMeaningToListListString : List Meaning -> List (List String)
+convertListMeaningToListListString listMeaning =
+    List.map (\meaning -> List.map (\subDef -> subDef.definition) meaning.definitions) listMeaning
 
 --SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
