@@ -6,6 +6,8 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as JD exposing (..) 
+import Random exposing (..)
+import List.Extra exposing (getAt)
 
 -- MODEL
 
@@ -26,11 +28,13 @@ type Msg
     = 
     GetDef 
     | GotDef(Result Http.Error Definition)
+    
 
 update :  Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         
+            
         GetDef -> 
             (Loading, fetchData)
         GotDef (Ok data) ->
@@ -44,7 +48,7 @@ view : Model -> Html Msg
 view model = 
     div [] [
       h1 [][text "Devinette"]
-      , button [onClick GetDef][text "Reload"]
+      , button [onClick GetDef ][text "Reload"]
       ,findDef model
     ]
     
@@ -61,11 +65,9 @@ findDef model =
 
 
             Loaded_def definitions->                
-                let
-                    defs = afficherDefinitions definitions.meanings
-                in
                 
-                    div [] [text (defs)]
+                afficherDefinitions definitions.meanings
+                
                 
                     
 
@@ -76,21 +78,31 @@ findDef model =
 
 
 
-afficherDefinitions : List Meaning -> String
+-- Fonction pour afficher une Meaning en HTML avec mise en page
+afficherMeaning : Meaning -> List(Html msg)
+afficherMeaning meaning =
+    List.indexedMap (\index subDef ->
+            if meaning.partOfSpeech == "noun" then
+                div []
+                    [ p [] [ text ("Définition " ++ String.fromInt (index + 1) ++ ":") ]
+                    , p [] [ text ("\t" ++ subDef.definition) ]
+                    ]
+            else
+                div [][]
+                ) meaning.definitions
+        
+-- Fonction pour afficher une liste de Meaning en HTML avec mise en page
+afficherDefinitions : List Meaning -> Html msg
 afficherDefinitions defs =
-    let 
-        defsString = convertListMeaningToListListString defs
-    in
-        List.indexedMap (\index sublist ->
-            "Définition " ++ String.fromInt (index + 1) ++ " :\n" ++
-            String.join "\n" (List.map (\element -> "\t" ++ element) sublist)
-        ) defsString
-        |> String.join "\n\n"
+    div []
+        (List.concatMap afficherMeaning defs)
 
 -- Convertir List Meaning en List (List String)
 convertListMeaningToListListString : List Meaning -> List (List String)
 convertListMeaningToListListString listMeaning =
-    List.map (\meaning -> List.map (\subDef -> subDef.definition) meaning.definitions) listMeaning
+    List.map (\meaning ->        
+            List.map (\subDef -> subDef.definition) meaning.definitions        
+    ) listMeaning
 
 --SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
@@ -118,7 +130,8 @@ type alias Definition =
 
 type alias Meaning =
     { 
-    definitions : List SubDefinition
+    partOfSpeech : String
+    ,definitions : List SubDefinition
     --, synonyms : List String
     --, antonyms : List String
     }
@@ -142,8 +155,8 @@ type alias SubDefinition =
             
 decodeArray : Decoder Definition
 decodeArray  =
-    list decodeDefinition
-      |> andThen (\definitions ->
+    JD.list decodeDefinition
+      |> JD.andThen (\definitions ->
             case definitions of
                 [] ->
                     -- Gérer le cas où la liste est vide
@@ -165,7 +178,8 @@ decodeDefinition  =
 
 decodeMeaning : Decoder Meaning
 decodeMeaning =
-    JD.map Meaning        
+    JD.map2 Meaning
+        (JD.field "partOfSpeech" JD.string)        
         (JD.field "definitions" (JD.list decodeSubDefinition))
         --(Decode.field "synonyms" (Decode.list Decode.string))
         --(Decode.field "antonyms" (Decode.list Decode.string))
@@ -187,11 +201,49 @@ decodeSubDefinition =
 --decodeMeanings = 
     --JD.list decodeDefinition
 
--- HTTP
+--Random word
+
+motsCourants : List String
+motsCourants =
+    [ "Cat", "Dog", "House", "Tree", "Book", "Car", "Water", "Sun", "Moon", "Flower"
+    , "Friend", "Family", "Food", "School", "Work", "Time", "Money", "Music", "Movie", "Game"
+    , "Love", "Hate", "Happy", "Sad", "Big", "Small", "Hot", "Cold", "Fast", "Slow"
+    , "Color", "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Black", "White"
+    , "Day", "Night", "Earth", "Sky", "Ocean", "Mountain", "City", "Country", "Cloud", "Rain"
+    , "Snow", "Wind", "Fire", "Ice", "Star", "Planet", "Home", "Road", "Bridge", "Street"
+    , "Park", "Game", "Team", "Player", "Goal", "Idea", "Problem", "Solution", "Question", "Answer"
+    , "Dream", "Sleep", "Wake", "Health", "Disease", "Doctor", "Patient", "Friend", "Enemy", "Child"
+    , "Adult", "Old", "Young", "Time", "Year", "Month", "Day", "Hour", "Minute", "Second", "Future"
+    , "Past", "Present", "Nature", "Environment", "Science", "Technology", "Art", "Culture", "Language", "Idea"
+    ]
+-- Fonction pour choisir un mot au hasard dans la liste
+
+
+-- Exemple d'utilisation
+--motChoisiAuHasard : Generator String
+--motChoisiAuHasard =
+    --getAt genererNombreAleatoire motsCourants
+
+
+
+
+-- Fonction pour générer un nombre aléatoire
+--genererNombreAleatoire : Int
+--genererNombreAleatoire =
+    --Random.generate (Random.int 0 99)
+        
+        
+
+-- HTTP --
+
+--Fonction pour créer l'url
+createUrl : String
+createUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/pencil"
+
 fetchData : Cmd Msg
-fetchData =
+fetchData  =    
     Http.get
-        { url = "https://api.dictionaryapi.dev/api/v2/entries/en/hello"
+        { url = createUrl
         , expect = Http.expectJson GotDef decodeArray
         }
 
