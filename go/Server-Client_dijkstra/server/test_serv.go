@@ -3,10 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"log"
 	"math"
 	"net"
-	"os"
 	"strings"
 	"sync"
 )
@@ -29,53 +28,46 @@ type Result struct {
 	Distances map[string]int
 }
 
+// WorkerPool représente un pool de workers.
 type WorkerPool struct {
 	workers chan struct{}
 	results chan Result
 	jobs    chan Job
 	wg      sync.WaitGroup
+	graph   Graph
 }
 
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
-		fmt.Println(errorMessage, err)
-		os.Exit(1)
+		log.Fatal(errorMessage, err)
 	}
 }
 
 // NewWorkerPool crée un nouveau pool de workers avec la taille spécifiée.
-func NewWorkerPool(size int) *WorkerPool {
+func NewWorkerPool(size int, graph Graph) *WorkerPool {
 	return &WorkerPool{
 		workers: make(chan struct{}, size),
 		results: make(chan Result),
 		jobs:    make(chan Job),
+		graph:   graph,
 	}
 }
 
-func worker(jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup, graph Graph) {
-	defer wg.Done()
-
-	for job := range jobs {
-		distances := Dijkstra(graph, job.NodeID)
-		result := Result{NodeID: job.NodeID, Distances: distances}
-		results <- result
-	}
-}
-
-func Dijkstra(graph Graph, start string) map[string]int {
+// Dijkstra trouve les distances les plus courtes à partir d'un nœud de départ.
+func (wp *WorkerPool) Dijkstra(start string) map[string]int {
 	distances := make(map[string]int)
 	visited := make(map[string]bool)
 
-	for node := range graph {
+	for node := range wp.graph {
 		distances[node] = math.MaxInt32
 	}
 	distances[start] = 0
 
-	for i := 0; i < len(graph); i++ {
-		u := minDistance(distances, visited)
+	for i := 0; i < len(wp.graph); i++ {
+		u := wp.minDistance(distances, visited)
 		visited[u] = true
 
-		for v, weight := range graph[u] {
+		for v, weight := range wp.graph[u] {
 			if !visited[v] && distances[u] != math.MaxInt32 && distances[u]+weight < distances[v] {
 				distances[v] = distances[u] + weight
 			}
@@ -85,7 +77,7 @@ func Dijkstra(graph Graph, start string) map[string]int {
 	return distances
 }
 
-func minDistance(distances map[string]int, visited map[string]bool) string {
+func (wp *WorkerPool) minDistance(distances map[string]int, visited map[string]bool) string {
 	minimum := math.MaxInt32
 	var minNode string
 
@@ -97,15 +89,27 @@ func minDistance(distances map[string]int, visited map[string]bool) string {
 	}
 	return minNode
 }
-func GetToWork(wp *WorkerPool, graph Graph) {
 
+// worker est une goroutine qui traite les tâches.
+func (wp *WorkerPool) worker() {
+	defer wp.wg.Done()
+
+	for job := range wp.jobs {
+		distances := wp.Dijkstra(job.NodeID)
+		result := Result{NodeID: job.NodeID, Distances: distances}
+		wp.results <- result
+	}
+}
+
+// GetToWork initialise les travailleurs avec des tâches.
+func (wp *WorkerPool) GetToWork() {
 	for i := 0; i < MAXWORKERS; i++ {
 		wp.wg.Add(1)
-		go worker(wp.jobs, wp.results, &wp.wg, graph)
+		go wp.worker()
 	}
 
 	go func() {
-		for node := range graph {
+		for node := range wp.graph {
 			job := Job{NodeID: node}
 			wp.jobs <- job
 		}
@@ -118,39 +122,35 @@ func GetToWork(wp *WorkerPool, graph Graph) {
 	}()
 }
 
-func GatherAllResults(wp *WorkerPool) Graph {
-
+// GatherAllResults collecte les résultats de tous les travailleurs.
+func (wp *WorkerPool) GatherAllResults() Graph {
 	allResults := make(map[string]map[string]int)
-
 	for result := range wp.results {
 		allResults[result.NodeID] = result.Distances
 	}
 	return allResults
-
 }
 
 // handleClient gère les connexions des clients.
 func handleClient(conn net.Conn, cwp *WorkerPool) {
-
 	defer cwp.wg.Done()
 	defer conn.Close()
 
-	company_name := receive_string(conn)
-	fmt.Println("Connexion effectuée avec :", company_name)
-	var graph Graph = receive_json(conn)
-	fmt.Println("Données JSON reçues :", graph)
+	var clientName string = receiveString(conn)
+	log.Printf("Connexion effectuée avec : %s\n", clientName)
+	var graph Graph = receiveJSON(conn)
+	log.Println("Données JSON reçues.")
 
-	wp := NewWorkerPool(MAXWORKERS)
+	wp := NewWorkerPool(MAXWORKERS, graph)
+	wp.GetToWork()
 
-	GetToWork(wp, graph)
+	allResults := wp.GatherAllResults()
 
-	allResults := GatherAllResults(wp)
-
-	send_json(conn, allResults)
-	fmt.Println("Données envoyées à", company_name)
+	sendJSON(conn, allResults)
+	log.Printf("Données envoyées à %s\n", clientName)
 }
 
-func receive_json(conn net.Conn) Graph {
+func receiveJSON(conn net.Conn) Graph {
 	var graph Graph
 
 	decoder := json.NewDecoder(conn)
@@ -160,8 +160,7 @@ func receive_json(conn net.Conn) Graph {
 	return graph
 }
 
-func receive_string(conn net.Conn) string {
-
+func receiveString(conn net.Conn) string {
 	reader := bufio.NewReader(conn)
 	data, err := reader.ReadString('\n')
 	is_there_an_error(err, "Erreur lors de la réception de la chaîne de caractères :")
@@ -171,23 +170,20 @@ func receive_string(conn net.Conn) string {
 	return data
 }
 
-func send_json(conn net.Conn, data Graph) {
-
+func sendJSON(conn net.Conn, data Graph) {
 	encoder := json.NewEncoder(conn)
 	err := encoder.Encode(data)
 	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
 }
 
 func main() {
-
-	cwp := NewWorkerPool(MAXCLIENTS)
+	cwp := NewWorkerPool(MAXCLIENTS, nil)
 
 	listener, err := net.Listen("tcp", serverAddress)
 	is_there_an_error(err, "Erreur lors de la création du serveur:")
-
 	defer listener.Close()
 
-	fmt.Println("Serveur démarré sur http://localhost:8080")
+	log.Printf("Serveur démarré sur http://%s\n", serverAddress)
 
 	for {
 		conn, err := listener.Accept()

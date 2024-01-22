@@ -43,17 +43,17 @@ func make_conn(router_name string) net.Conn {
 	return conn
 }
 
-func receive_json(conn net.Conn) map[string]int {
+func receive_json(conn net.Conn) Graph {
 
-	var distances map[string]int
+	var data Graph
 
 	decoder := json.NewDecoder(conn)
-	err := decoder.Decode(&distances)
+	err := decoder.Decode(&data)
 	is_there_an_error(err, "Erreur lors de la réception des données JSON :")
 
 	fmt.Println("Données reçues !")
 
-	return distances
+	return data
 }
 
 func send_json(conn net.Conn, data Graph) {
@@ -69,7 +69,7 @@ func send_string(conn net.Conn, data string) {
 	is_there_an_error(err, "Erreur lors de l'envoi de la chaîne de caractères :")
 }
 
-func write_json(distances map[string]int) {
+func write_json(distances Graph) {
 
 	resultJSON, err := json.Marshal(distances)
 	is_there_an_error(err, "Erreur lors de la conversion en JSON :")
@@ -86,17 +86,17 @@ func main() {
 
 	start := time.Now()
 
-	router_name := "R1"
+	company_name := "-Remy Factory-"
 	file_name := "generated_graph.json"
 
 	graph := Open_Json(file_name)
-	conn := make_conn(router_name)
+	conn := make_conn(company_name)
 
 	send_json(conn, graph)
 
-	distances := receive_json(conn)
+	AllPairDistances := receive_json(conn)
 
-	write_json(distances)
+	write_json(AllPairDistances)
 
 	elapsed := time.Since(start)
 	fmt.Println("Temps d'execution :", elapsed)
