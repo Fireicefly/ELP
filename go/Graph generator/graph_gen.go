@@ -6,23 +6,31 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Graph map[string]map[string]int
 
-const TAILLE = 500
+const TAILLE = 3000
 
-func convertToAdjacencyMap(matrix [][]int, nodes []string) Graph {
+func is_there_an_error(err error, errorMessage string) {
+	if err != nil {
+		fmt.Println(errorMessage, err)
+		os.Exit(1)
+	}
+}
+
+func convertToAdjacencyMap(nodes []string) Graph {
 	adjacencyMap := make(Graph)
 
 	for _, node := range nodes {
 		adjacencyMap[node] = make(map[string]int)
 	}
 
-	for i, source := range nodes {
-		for j, weight := range matrix[i] {
-			if weight != 0 {
-				destination := nodes[j]
+	for _, source := range nodes {
+		for _, destination := range nodes {
+			weight := rand.Intn(20)
+			if weight >= 1 && weight <= 8 {
 				adjacencyMap[source][destination] = weight
 			}
 		}
@@ -31,70 +39,32 @@ func convertToAdjacencyMap(matrix [][]int, nodes []string) Graph {
 	return adjacencyMap
 }
 
-func generateRandomGraphMatrix(size int) [][]int {
-
-	matrix := make([][]int, size)
-	for i := range matrix {
-		matrix[i] = make([]int, size)
-	}
-
-	for i := range matrix {
-		matrix[i][i] = 0
-
-		for j := range matrix[i] {
-			if i != j {
-				randomInteger := rand.Intn(20)
-				if randomInteger >= 9 && randomInteger <= 20 {
-					randomInteger = 0
-				}
-				matrix[i][j] = randomInteger
-				matrix[j][i] = randomInteger
-			}
-		}
-	}
-
-	return matrix
-}
-
 func write_json(graph Graph) {
 
 	resultJSON, err := json.Marshal(graph)
-	if err != nil {
-		panic(err)
-	}
+	is_there_an_error(err, "Erreur lors de la conversion en JSON :")
 
 	file, err := os.Create("generated_graph.json")
-	if err != nil {
-		panic(err)
-	}
-
+	is_there_an_error(err, "Erreur lors de la création du fichier :")
 	defer file.Close()
 
 	_, err = file.Write(resultJSON)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Fichier crée.")
+	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
 }
 
 func main() {
-	matrix := generateRandomGraphMatrix(TAILLE)
 
-	fmt.Println("Matrice d'adjacence générée aléatoirement :")
-	for _, row := range matrix {
-		fmt.Println(row)
-	}
-
+	start := time.Now()
 	var nodes []string
 
 	for i := 1; i <= TAILLE; i++ {
 		node := "R" + strconv.Itoa(i)
 		nodes = append(nodes, node)
 	}
-	adjacencyMap := convertToAdjacencyMap(matrix, nodes)
 
-	fmt.Println(adjacencyMap)
+	adjacencyMap := convertToAdjacencyMap(nodes)
 
 	write_json(adjacencyMap)
+	elapsed := time.Since(start)
+	fmt.Println("Temps d'execution :", elapsed)
 }
