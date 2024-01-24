@@ -1,9 +1,10 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Navigation as Navigation
 import Html exposing (..)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD exposing (..) 
 import Random exposing (..)
@@ -14,54 +15,103 @@ import List.Extra exposing (getAt)
 type Model
     = 
     Start
+    | Load_word String
     | Loading    
     | Loaded_def Definition
-    | Failed
+    | Failed String
+    | UserInput String
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  (Start, Cmd.none)
+  (Start, Http.get
+        { url = "../ressources/Words.txt"
+        , expect = Http.expectString GotWord
+        })
+
+initInput : Msg
+initInput = UpdateUserInput ""
 
 -- UPDATE
 
 type Msg
     = 
-    GetDef 
+    
+    GotWord (Result Http.Error String)
     | GotDef(Result Http.Error Definition)
+    | UpdateUserInput String
+    | RandomInt Int
     
 
 update :  Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        
-            
-        GetDef -> 
-            (Loading, fetchData)
+        GotWord result ->
+            case result of
+                Ok wordlist ->(Load_word wordlist, Random.generate RandomInt(Random.int 0 99))
+                Err _ -> (Failed "Failed to get the word list. Make sure to run elm reactor in from the parent folder", Cmd.none)
+       
         GotDef (Ok data) ->
             (Loaded_def data, Cmd.none)
         GotDef (Err _) ->
-            (Failed, Cmd.none)
+            (Failed "error GotDef", Cmd.none)
+
+        UpdateUserInput newText ->
+             ( UserInput  newText , Cmd.none )
+
+        RandomInt x ->
+            case model of
+                Load_word word ->
+                 case String.split " " word of
+                        [] -> (Failed "The word list is empty.", Cmd.none)
+                        (a::z) -> case (List.head (List.drop x (a::z))) of
+                            Just answer -> (Loading, fetchData answer)
+                            Nothing -> (Failed "Failed to pick a random word.", Cmd.none)
+                Start -> (Failed "", Cmd.none)
+                Loading ->(Loading, Cmd.none)
+                Loaded_def _->   (Failed "", Cmd.none) 
+                Failed _->(Failed "", Cmd.none)
+                UserInput _ ->(Failed "", Cmd.none)
 
 -- VIEW
 
 view : Model -> Html Msg
 view model = 
     div [] [
-      h1 [][text "Devinette"]
-      , button [onClick GetDef ][text "Reload"]
-      ,findDef model
+      h1 [style "font-size" "90px"][text "Guess it"]
+      , button [onClick (GotWord (Ok "")) ][text "Reload"]
+      , findDef model
+      , input
+            [ type_ "text"
+            , placeholder "Enter text"
+            , Html.Attributes.value ""
+            , onInput UpdateUserInput
+            ]
+            []
+        , text ("You entered: " ++ "")
     ]
     
     
+    
 
+findDef : Model -> Html Msg
 findDef model = 
     case model of
             Start ->
                 div [] [text "Bienvenue"]
             Loading ->
                 div [] [ text "Chargement..." ]
-
-            
+            Load_word word->
+                div [] [ text (word) ]
+            UserInput texte ->
+                div [] [
+                    input
+                        [ type_ "text"
+                        , placeholder "Enter text"
+                        , Html.Attributes.value texte
+                        , onInput UpdateUserInput
+                        ]
+                        []
+                    , text ("You entered: " ++ texte)]
 
 
             Loaded_def definitions->                
@@ -72,7 +122,7 @@ findDef model =
                     
 
 
-            Failed ->
+            Failed _->
                 div [] [ text "Échec du chargement" ]
 
 
@@ -82,9 +132,9 @@ findDef model =
 afficherMeaning : Meaning -> List(Html msg)
 afficherMeaning meaning =
     List.indexedMap (\index subDef ->
-            if meaning.partOfSpeech == "noun" then
+            if meaning.partOfSpeech /= "verb" then
                 div []
-                    [ p [] [ text ("Définition " ++ String.fromInt (index + 1) ++ ":") ]
+                    [ p [] [ text ("• " ++ meaning.partOfSpeech ++ " définition " ++ String.fromInt (index + 1) ++ ":") ]
                     , p [] [ text ("\t" ++ subDef.definition) ]
                     ]
             else
@@ -110,6 +160,8 @@ subscriptions _ = Sub.none
 
 -- MAIN
 
+
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -142,16 +194,7 @@ type alias SubDefinition =
     --, synonyms : List String
     --, antonyms : List String
     }
-
-
---removeFirstAndLastCharacter : String -> Msg
---removeFirstAndLastCharacter jsonString =
-    --let
-        
-        --slicedString = String.dropRight 1 (String.dropLeft 1 jsonString)
-    
-    
-    --in GotDef (jsonString)           
+         
             
 decodeArray : Decoder Definition
 decodeArray  =
@@ -201,49 +244,28 @@ decodeSubDefinition =
 --decodeMeanings = 
     --JD.list decodeDefinition
 
---Random word
-
-motsCourants : List String
-motsCourants =
-    [ "Cat", "Dog", "House", "Tree", "Book", "Car", "Water", "Sun", "Moon", "Flower"
-    , "Friend", "Family", "Food", "School", "Work", "Time", "Money", "Music", "Movie", "Game"
-    , "Love", "Hate", "Happy", "Sad", "Big", "Small", "Hot", "Cold", "Fast", "Slow"
-    , "Color", "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Black", "White"
-    , "Day", "Night", "Earth", "Sky", "Ocean", "Mountain", "City", "Country", "Cloud", "Rain"
-    , "Snow", "Wind", "Fire", "Ice", "Star", "Planet", "Home", "Road", "Bridge", "Street"
-    , "Park", "Game", "Team", "Player", "Goal", "Idea", "Problem", "Solution", "Question", "Answer"
-    , "Dream", "Sleep", "Wake", "Health", "Disease", "Doctor", "Patient", "Friend", "Enemy", "Child"
-    , "Adult", "Old", "Young", "Time", "Year", "Month", "Day", "Hour", "Minute", "Second", "Future"
-    , "Past", "Present", "Nature", "Environment", "Science", "Technology", "Art", "Culture", "Language", "Idea"
-    ]
--- Fonction pour choisir un mot au hasard dans la liste
-
-
--- Exemple d'utilisation
---motChoisiAuHasard : Generator String
---motChoisiAuHasard =
-    --getAt genererNombreAleatoire motsCourants
-
 
 
 
 -- Fonction pour générer un nombre aléatoire
---genererNombreAleatoire : Int
---genererNombreAleatoire =
-    --Random.generate (Random.int 0 99)
+genererNombreAleatoire : Generator Int
+genererNombreAleatoire =
+    Random.int 0 99
         
         
 
 -- HTTP --
 
 --Fonction pour créer l'url
-createUrl : String
-createUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/pencil"
+createUrl : String -> String
+createUrl word =
+            "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
+            
 
-fetchData : Cmd Msg
-fetchData  =    
+fetchData : String -> Cmd Msg
+fetchData word =    
     Http.get
-        { url = createUrl
+        { url = createUrl word
         , expect = Http.expectJson GotDef decodeArray
         }
 
