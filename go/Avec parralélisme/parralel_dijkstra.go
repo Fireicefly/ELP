@@ -105,7 +105,7 @@ func main() {
 
 	graph := openJson("generated_graph.json")
 
-	const numWorkers = 6
+	const numWorkers = 8
 	var wg sync.WaitGroup
 	jobs := make(chan Job, len(graph))
 	results := make(chan Result, len(graph))
@@ -128,7 +128,7 @@ func main() {
 		close(results)
 	}()
 
-	allResults := make(map[string]map[string]int)
+	allResults := make(Graph)
 
 	for result := range results {
 		allResults[result.NodeID] = result.Distances

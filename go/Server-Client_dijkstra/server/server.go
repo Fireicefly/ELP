@@ -3,66 +3,70 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"log"
 	"math"
 	"net"
-	"os"
 	"strings"
 	"sync"
 )
 
 const (
 	serverAddress = "localhost:8080"
-	maxWorker     = 5
+	MAXCLIENTS    = 5
+	MAXWORKERS    = 8
 )
 
 // Graph représente la structure du graphe pondéré.
 type Graph map[string]map[string]int
 
-// Result représente le résultat d'un calcul Dijkstra pour un routeur spécifique.
+type Job struct {
+	NodeID string
+}
+
 type Result struct {
-	Router    string
+	NodeID    string
 	Distances map[string]int
 }
 
 // WorkerPool représente un pool de workers.
 type WorkerPool struct {
-	workers    chan struct{}
-	resultChan chan Result
-	wg         sync.WaitGroup
-	mu         sync.Mutex
+	workers chan struct{}
+	results chan Result
+	jobs    chan Job
+	wg      sync.WaitGroup
+	graph   Graph
 }
 
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
-		fmt.Println(errorMessage, err)
-		os.Exit(1)
+		log.Fatal(errorMessage, err)
 	}
 }
 
 // NewWorkerPool crée un nouveau pool de workers avec la taille spécifiée.
-func NewWorkerPool(size int) *WorkerPool {
+func NewWorkerPool(size int, graph Graph) *WorkerPool {
 	return &WorkerPool{
-		workers:    make(chan struct{}, size),
-		resultChan: make(chan Result),
+		workers: make(chan struct{}, size),
+		results: make(chan Result),
+		jobs:    make(chan Job),
+		graph:   graph,
 	}
 }
 
-func Dijkstra(graph Graph, start string) map[string]int {
+func (wp *WorkerPool) Dijkstra(start string) map[string]int {
 	distances := make(map[string]int)
 	visited := make(map[string]bool)
 
-	// Initialisation des distances avec une valeur infinie et du point de départ à 0
-	for node := range graph {
+	for node := range wp.graph {
 		distances[node] = math.MaxInt32
 	}
 	distances[start] = 0
 
-	for i := 0; i < len(graph); i++ {
-		u := minDistance(distances, visited)
+	for i := 0; i < len(wp.graph); i++ {
+		u := wp.minDistance(distances, visited)
 		visited[u] = true
 
-		for v, weight := range graph[u] {
+		for v, weight := range wp.graph[u] {
 			if !visited[v] && distances[u] != math.MaxInt32 && distances[u]+weight < distances[v] {
 				distances[v] = distances[u] + weight
 			}
@@ -72,7 +76,7 @@ func Dijkstra(graph Graph, start string) map[string]int {
 	return distances
 }
 
-func minDistance(distances map[string]int, visited map[string]bool) string {
+func (wp *WorkerPool) minDistance(distances map[string]int, visited map[string]bool) string {
 	minimum := math.MaxInt32
 	var minNode string
 
@@ -85,27 +89,67 @@ func minDistance(distances map[string]int, visited map[string]bool) string {
 	return minNode
 }
 
-// handleClient gère les connexions des clients.
-func handleClient(conn net.Conn, wp *WorkerPool) {
-
+// worker est une goroutine qui traite les tâches.
+func (wp *WorkerPool) worker() {
 	defer wp.wg.Done()
-	defer conn.Close()
 
-	router_name := receive_string(conn)
-	fmt.Println("Connexion effectuée avec :", router_name)
-	var graph Graph = receive_json(conn)
-	fmt.Println("Données JSON reçues :", graph)
-
-	distances := Dijkstra(graph, router_name)
-
-	encoder := json.NewEncoder(conn)
-	err := encoder.Encode(distances)
-	is_there_an_error(err, "Erreur lors de l'envoi des résultats au client:")
-	fmt.Println("Données envoyées à ", router_name, ":", distances)
-
+	for job := range wp.jobs {
+		distances := wp.Dijkstra(job.NodeID)
+		result := Result{NodeID: job.NodeID, Distances: distances}
+		wp.results <- result
+	}
 }
 
-func receive_json(conn net.Conn) Graph {
+// GetToWork initialise les travailleurs avec des tâches.
+func (wp *WorkerPool) GetToWork() {
+	for i := 0; i < MAXWORKERS; i++ {
+		wp.wg.Add(1)
+		go wp.worker()
+	}
+
+	go func() {
+		for node := range wp.graph {
+			job := Job{NodeID: node}
+			wp.jobs <- job
+		}
+		close(wp.jobs)
+	}()
+
+	go func() {
+		wp.wg.Wait()
+		close(wp.results)
+	}()
+}
+
+// GatherAllResults collecte les résultats de tous les travailleurs.
+func (wp *WorkerPool) GatherAllResults() Graph {
+	allResults := make(map[string]map[string]int)
+	for result := range wp.results {
+		allResults[result.NodeID] = result.Distances
+	}
+	return allResults
+}
+
+// handleClient gère les connexions des clients.
+func handleClient(conn net.Conn, cwp *WorkerPool) {
+	defer cwp.wg.Done()
+	defer conn.Close()
+
+	var clientName string = receiveString(conn)
+	log.Printf("Connexion effectuée avec : %s\n", clientName)
+	var graph Graph = receiveJSON(conn)
+	log.Println("Données JSON reçues.")
+
+	wp := NewWorkerPool(MAXWORKERS, graph)
+	wp.GetToWork()
+
+	allResults := wp.GatherAllResults()
+
+	sendJSON(conn, allResults)
+	log.Printf("Données envoyées à %s\n", clientName)
+}
+
+func receiveJSON(conn net.Conn) Graph {
 	var graph Graph
 
 	decoder := json.NewDecoder(conn)
@@ -115,11 +159,9 @@ func receive_json(conn net.Conn) Graph {
 	return graph
 }
 
-func receive_string(conn net.Conn) string {
-
+func receiveString(conn net.Conn) string {
 	reader := bufio.NewReader(conn)
 	data, err := reader.ReadString('\n')
-	fmt.Println(data)
 	is_there_an_error(err, "Erreur lors de la réception de la chaîne de caractères :")
 
 	data = strings.TrimSpace(data)
@@ -127,28 +169,25 @@ func receive_string(conn net.Conn) string {
 	return data
 }
 
-func send_json(conn net.Conn, data Graph) {
-
+func sendJSON(conn net.Conn, data Graph) {
 	encoder := json.NewEncoder(conn)
 	err := encoder.Encode(data)
 	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
 }
 
 func main() {
-
-	wp := NewWorkerPool(maxWorker)
+	cwp := NewWorkerPool(MAXCLIENTS, nil)
 
 	listener, err := net.Listen("tcp", serverAddress)
 	is_there_an_error(err, "Erreur lors de la création du serveur:")
-
 	defer listener.Close()
 
-	fmt.Println("Serveur démarré sur http://localhost:8080")
+	log.Printf("Serveur démarré sur http://%s\n", serverAddress)
 
 	for {
 		conn, err := listener.Accept()
 		is_there_an_error(err, "Erreur lors de l'acceptation de la connexion:")
-		wp.wg.Add(1)
-		go handleClient(conn, wp)
+		cwp.wg.Add(1)
+		go handleClient(conn, cwp)
 	}
 }
