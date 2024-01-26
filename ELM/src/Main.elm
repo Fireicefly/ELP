@@ -8,7 +8,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD exposing (..) 
 import Random exposing (..)
-import List.Extra exposing (getAt)
+
 
 -- MODEL
 
@@ -69,8 +69,8 @@ update msg model =
                 Loading ->(Loading, Cmd.none)
                 Loaded_def _->   (Failed "", Cmd.none) 
                 Failed _->(Failed "", Cmd.none)                
-                Check definitions myguess ->(Failed "", Cmd.none)
-                ShowAnswer definitions -> (Failed "", Cmd.none)
+                Check _ _ ->(Failed "", Cmd.none)
+                ShowAnswer _ -> (Failed "", Cmd.none)
         
 
         GuessWord definitions myguess ->
@@ -204,12 +204,6 @@ afficherDefinitions defs =
     div []
         (List.concatMap afficherMeaning defs)
 
--- Convertir List Meaning en List (List String)
-convertListMeaningToListListString : List Meaning -> List (List String)
-convertListMeaningToListListString listMeaning =
-    List.map (\meaning ->        
-            List.map (\subDef -> subDef.definition) meaning.definitions        
-    ) listMeaning
 
 --SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
@@ -227,10 +221,7 @@ main =
         , subscriptions = subscriptions
         }
 
-type alias Tableau = List Definition
-
-
---Fonctions pour Decoder le site
+--Fonctions pour decoder le site
 
 type alias Definition =
     { word : String    
@@ -240,16 +231,11 @@ type alias Definition =
 type alias Meaning =
     { 
     partOfSpeech : String
-    ,definitions : List SubDefinition
-    --, synonyms : List String
-    --, antonyms : List String
+    ,definitions : List SubDefinition    
     }
 
 type alias SubDefinition =
-    { definition : String
-    --, example : Maybe String
-    --, synonyms : List String
-    --, antonyms : List String
+    { definition : String    
     }
          
             
@@ -274,43 +260,18 @@ decodeDefinition  =
         (JD.field "meanings" (JD.list decodeMeaning))
                
 
-
-
 decodeMeaning : Decoder Meaning
 decodeMeaning =
     JD.map2 Meaning
         (JD.field "partOfSpeech" JD.string)        
         (JD.field "definitions" (JD.list decodeSubDefinition))
-        --(Decode.field "synonyms" (Decode.list Decode.string))
-        --(Decode.field "antonyms" (Decode.list Decode.string))
+        
 
 decodeSubDefinition : Decoder SubDefinition
 decodeSubDefinition =
     JD.map SubDefinition
         (JD.field "definition" JD.string)
-        --(Decode.field "example" (Decode.maybe Decode.string))
-        --(Decode.field "synonyms" (Decode.list Decode.string))
-        --(Decode.field "antonyms" (Decode.list Decode.string))
-
-
---decodeDefinition =
-    --JD.map Definition
-    --(JD.field "meanings" JD.string (JD.list (JD.field "definitions" (JD.list (JD.field "definition" JD.string)))))
-    
-
---decodeMeanings = 
-    --JD.list decodeDefinition
-
-
-
-
--- Fonction pour générer un nombre aléatoire
-genererNombreAleatoire : Generator Int
-genererNombreAleatoire =
-    Random.int 0 99
         
-        
-
 -- HTTP --
 
 --Fonction pour créer l'url
