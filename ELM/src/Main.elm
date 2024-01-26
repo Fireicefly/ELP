@@ -20,6 +20,7 @@ type Model
     | Loaded_def Definition
     | Failed String    
     | Check  Definition String
+    | ShowAnswer Definition
 
 init : () -> (Model, Cmd Msg)
 init _ =
@@ -38,6 +39,8 @@ type Msg
     | GotDef(Result Http.Error Definition)    
     | RandomInt Int
     | GuessWord Definition String
+    | GiveAnswer Definition
+    | Restart
 
 update :  Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -67,10 +70,17 @@ update msg model =
                 Loaded_def _->   (Failed "", Cmd.none) 
                 Failed _->(Failed "", Cmd.none)                
                 Check definitions myguess ->(Failed "", Cmd.none)
+                ShowAnswer definitions -> (Failed "", Cmd.none)
         
 
         GuessWord definitions myguess ->
             (Check definitions myguess, Cmd.none)
+
+        GiveAnswer definitions ->
+            (ShowAnswer definitions, Cmd.none)
+
+        Restart ->
+            (Loading, Navigation.reload)
 
 -- VIEW
 
@@ -78,7 +88,7 @@ view : Model -> Html Msg
 view model = 
     div [] [
       h1 [style "font-size" "90px"][text "Guess it"]
-      , button [onClick (GotWord (Ok "")) ][text "Reload"]
+      , button [onClick (Restart) ][text "Play again ;)"]
       , findDef model
       
     ]
@@ -110,7 +120,13 @@ findDef model =
                             ,placeholder "Write here"
                             , Html.Attributes.value "", onInput (GuessWord definitions)
                             ][]
-                            ]
+                        , button
+                        [ style "font-size" "20px"
+                        , style "margin-top" "3px"
+                        , style "width" "200px"
+                        , onClick (GiveAnswer definitions) 
+                        ] [ text "Show answer" ]    
+                        ]
                     , afficherDefinitions definitions.meanings
                     ]
 
@@ -127,13 +143,39 @@ findDef model =
                             , style "width" "193px"
                             ,placeholder "Write here"
                             , Html.Attributes.value myguess, onInput (GuessWord definitions)
-                            ][]]
+                            ][]
+                        , button
+                        [ style "font-size" "20px"
+                        , style "margin-top" "3px"
+                        , style "width" "200px"
+                        , onClick (GiveAnswer definitions) 
+                        ] [ text "Show answer" ]  
+                        ]
                     , afficherDefinitions definitions.meanings
                     ]
                 else 
                     div [][text ("Bravo, la réponse était bien " ++ definitions.word)]
 
-                    
+            ShowAnswer definitions->
+                div [][
+                        input
+                            [style "text-align" "center"
+                            , style "font-size" "20px"
+                            , style "width" "193px"
+                            ,placeholder "Write here"
+                            , Html.Attributes.value "", onInput (GuessWord definitions)
+                            ][]
+                        , button
+                        [ style "font-size" "20px"
+                        , style "margin-top" "3px"
+                        , style "width" "200px"
+                        , onClick (GiveAnswer definitions) 
+                        ] [ text "Show answer" ]  
+                        ,h1[] [text ("La réponse était  " ++ definitions.word)]
+                        , afficherDefinitions definitions.meanings
+
+                ]
+        
                     
 
 
