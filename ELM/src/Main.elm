@@ -18,8 +18,8 @@ type Model
     | Load_word String
     | Loading    
     | Loaded_def Definition
-    | Failed String
-    | UserInput String
+    | Failed String    
+    | Check  Definition String
 
 init : () -> (Model, Cmd Msg)
 init _ =
@@ -28,8 +28,6 @@ init _ =
         , expect = Http.expectString GotWord
         })
 
-initInput : Msg
-initInput = UpdateUserInput ""
 
 -- UPDATE
 
@@ -37,10 +35,9 @@ type Msg
     = 
     
     GotWord (Result Http.Error String)
-    | GotDef(Result Http.Error Definition)
-    | UpdateUserInput String
+    | GotDef(Result Http.Error Definition)    
     | RandomInt Int
-    
+    | GuessWord Definition String
 
 update :  Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -52,11 +49,10 @@ update msg model =
        
         GotDef (Ok data) ->
             (Loaded_def data, Cmd.none)
+            
         GotDef (Err _) ->
             (Failed "error GotDef", Cmd.none)
-
-        UpdateUserInput newText ->
-             ( UserInput  newText , Cmd.none )
+       
 
         RandomInt x ->
             case model of
@@ -69,8 +65,12 @@ update msg model =
                 Start -> (Failed "", Cmd.none)
                 Loading ->(Loading, Cmd.none)
                 Loaded_def _->   (Failed "", Cmd.none) 
-                Failed _->(Failed "", Cmd.none)
-                UserInput _ ->(Failed "", Cmd.none)
+                Failed _->(Failed "", Cmd.none)                
+                Check definitions myguess ->(Failed "", Cmd.none)
+        
+
+        GuessWord definitions myguess ->
+            (Check definitions myguess, Cmd.none)
 
 -- VIEW
 
@@ -80,14 +80,7 @@ view model =
       h1 [style "font-size" "90px"][text "Guess it"]
       , button [onClick (GotWord (Ok "")) ][text "Reload"]
       , findDef model
-      , input
-            [ type_ "text"
-            , placeholder "Enter text"
-            , Html.Attributes.value ""
-            , onInput UpdateUserInput
-            ]
-            []
-        , text ("You entered: " ++ "")
+      
     ]
     
     
@@ -102,23 +95,45 @@ findDef model =
                 div [] [ text "Chargement..." ]
             Load_word word->
                 div [] [ text (word) ]
-            UserInput texte ->
-                div [] [
-                    input
-                        [ type_ "text"
-                        , placeholder "Enter text"
-                        , Html.Attributes.value texte
-                        , onInput UpdateUserInput
-                        ]
-                        []
-                    , text ("You entered: " ++ texte)]
+            
 
 
-            Loaded_def definitions->                
+            Loaded_def definitions->            
                 
-                afficherDefinitions definitions.meanings
+                div[]
+                    [ 
+                    div [] [
+                        input
+                            [style "text-align" "center"
+                            , style "font-size" "20px"
+                            , style "width" "193px"
+                            ,placeholder "Write here"
+                            , Html.Attributes.value "", onInput (GuessWord definitions)
+                            ][]
+                            ]
+                    , afficherDefinitions definitions.meanings
+                    ]
+
+            Check definitions myguess->                              
+
+                if definitions.word /= myguess then
                 
-                
+                    div[]
+                    [ 
+                    div [] [
+                        input
+                            [style "text-align" "center"
+                            , style "font-size" "20px"
+                            , style "width" "193px"
+                            ,placeholder "Write here"
+                            , Html.Attributes.value myguess, onInput (GuessWord definitions)
+                            ][]]
+                    , afficherDefinitions definitions.meanings
+                    ]
+                else 
+                    div [][text ("Bravo, la réponse était bien " ++ definitions.word)]
+
+                    
                     
 
 
