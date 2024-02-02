@@ -110,6 +110,8 @@ function checkWordTransform(oldWord, newWord, playerHand){
   if (newWord.length < 3) return false;
   const oldWordLetters = oldWord.split('');
   const newWordLetters = newWord.split('');
+
+  if (oldWord.length === newWord.length) return false;
   // Vérifier que chaque lettre du nouveau mot est dans la main du joueur ou était présente dans l'ancien mot
   for (let i = 0; i < newWordLetters.length; i++) {
     if (!(playerHand.includes(newWordLetters[i]) || oldWordLetters.includes(newWordLetters[i]))) {

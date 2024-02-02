@@ -2,11 +2,5 @@ todo:
 
 afficher score
 fonction jarnac
-
-bug : lorsque l'on transforme un mot et qu'on réécrit exactement les mêmes lettres,
-la transformation est validée alors que y'a pas de changements
-
-LOG FILE FAIT, addLog() à chaque fois qu'on fait une action
-
 fin de partie (8 mots posés)
 comprendre où utiliser des async function
