@@ -124,10 +124,50 @@ function scoreWord(word){
   return word.length**2;
 }
 
+function end_turn(){
+    let answer;
+    do {
+        answer = readlineSync.question('Avez-vous terminé votre tour ?');       
+        
+    } while (answer !== "oui" && answer !== "non");
+    if (answer =="oui"){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+
+let i = 0
+let end_player_turn = false
 draw6Letters(player1);
-console.log(player1.hand);
-addWord(player1);
-printBoard(player1);
-transformWord(player1);
-printBoard(player1);
+draw6Letters(player2);
+let init = true
+while (i!==1){
+    console.log("Bienvenue au Jarnac");
+    
+    
+    
+    do {
+        console.log(player1.hand);
+        
+        addWord(player1);
+        printBoard(player1);
+        transformWord(player1);
+        printBoard(player1);
+        end_player_turn = end_turn()
+    }while (end_player_turn !== true)
+    end_player_turn = false
+    do {
+        console.log(player2.hand);
+        addWord(player2);
+        printBoard(player2);
+        transformWord(player2);
+        printBoard(player2);
+        end_player_turn = end_turn()
+    }while (end_player_turn !== true)
+
+}
+
 
