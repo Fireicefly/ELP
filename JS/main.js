@@ -14,6 +14,7 @@ function Player(name){
   this.name = name;
   this.hand = [];
   this.board = [];
+  this.firstTurn = true;
 }
 
 // Création des instances de la classe Player
@@ -153,11 +154,16 @@ function transformWord(player){
   addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
   player.board[index] = newWord;
   for (const char of newWord) {
-    if (!oldWord.includes(char)) {
-      const index = player.hand.indexOf(char);
-      if (index !== -1) {
-        player.hand.splice(index, 1);
-      }
+    const countInNewWord = newWord.split(char).length - 1;
+    const countInOldWord = oldWord.split(char).length - 1;
+    if (countInNewWord > countInOldWord) {
+        const excessCount = countInNewWord - countInOldWord;
+        for (let i = 0; i < excessCount; i++) {
+            const index = player.hand.indexOf(char);
+            if (index !== -1) {
+                player.hand.splice(index, 1);
+            }
+        }
     }
   }
   draw1Letter(player);
@@ -223,8 +229,6 @@ let i = 0
 let end_player_turn = false
 draw6Letters(player1);
 draw6Letters(player2);
-let init1 = true
-let init2 = true
 let choice = 0
 
 
@@ -233,11 +237,11 @@ function game() {
         console.log("Bienvenue au Jarnac");
         do {
             let actionVal = 0;
-            if (init1 === true) {
+            if (player1.firstTurn) {
                 console.log("Au tour du joueur 1");
                 printLetters(player1);
                 addWord(player1);
-                init1 = false;
+                player1.firstTurn = false;
             } else {
                 printLetters(player1);
                 choice = action_choice(player1);
@@ -252,11 +256,11 @@ function game() {
 
         do {
           let actionVal = 0;
-          if (init2 === true) {
+          if (player2.firstTurn) {
               console.log("Au tour du joueur 2");
               printLetters(player2);
               addWord(player2);
-              init2 = false;
+              player2.firstTurn = false;
           } else {
               printLetters(player2);
               choice = action_choice(player2);

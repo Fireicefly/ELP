@@ -1,7 +1,5 @@
 todo:
 
-piocher une lettre quand on rajoute un mot ou modifie
-choisir entre ajouter ou modifier un mot
 afficher tapis P1 et P2
 afficher score
 fonction jarnac
