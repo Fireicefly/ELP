@@ -155,9 +155,11 @@ function transformWord(player){
   player.board[index] = newWord;
   player.justPlayedWords.push(newWord)
   for (const char of newWord) {
-    const index = player.hand.indexOf(char);
-    if (index !== -1) {
-      player.hand.splice(index, 1);
+    if (!oldWord.includes(char)) {
+      const index = player.hand.indexOf(char);
+      if (index !== -1) {
+        player.hand.splice(index, 1);
+      }
     }
   }
 }
@@ -178,12 +180,12 @@ function end_turn(){
     return false;
 }
 
-function action_choice(){
+function action_choice(player){
     let answer;
     do {
         answer = readlineSync.question('1 : Placer un mot   2 : Modifier un mot   3 : Passer\n');
-        
-    } while (answer !== "1" && answer !== "2" && answer!== "3");
+
+    } while ((answer !== "1" || player.hand.length < 3) && answer !== "2" && answer!== "3");
     if (answer ==="1"){
         return 1;
     }
@@ -239,7 +241,7 @@ function game() {
                 init1 = false;
             } else {
                 printLetters(player1);
-                choice = action_choice();
+                choice = action_choice(player1);
                 actionVal = action(choice, player1);
             }
             if (actionVal === 3) {
@@ -248,33 +250,27 @@ function game() {
 
         } while (end_player_turn !== true)
         end_player_turn = false
+
         do {
           let actionVal = 0;
-          console.log("Au tour du joueur 2");
-          printLetters(player2);
           if (init2 === true) {
+              console.log("Au tour du joueur 2");
+              printLetters(player2);
               addWord(player2);
               init2 = false;
           } else {
-              choice = action_choice();
+              printLetters(player2);
+              choice = action_choice(player2);
               actionVal = action(choice, player2);
           }
-          if (actionVal !== 3) {
-              end_player_turn = end_turn();
-              if (end_player_turn === true) {
-                  addLog(player2, "a terminé son tour")
-              }
-          } else {
-              end_player_turn = true
+          if (actionVal === 3) {
+            end_player_turn = true
           }
 
-
-        } while (end_player_turn !== true)
-        end_player_turn = false
+      } while (end_player_turn !== true)
+      end_player_turn = false
 
     }
 }
 
 cleanLog(game);
-
-
