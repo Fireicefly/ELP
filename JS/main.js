@@ -138,12 +138,46 @@ function end_turn(){
     }
 }
 
+function action_choice(){
+    let answer;
+    do {
+        answer = readlineSync.question('1 : placer un mot   2 : modifier un mot   3 : pass');       
+        
+    } while (answer !== "1" && answer !== "2" && answer!== "3");
+    if (answer =="1"){
+        return 1;
+    }
+    if (answer =="2"){
+        return 2;
+    }
+    if (answer =="3"){
+        return 3;
+    }
+}
+
+function action(choice, player){
+    printBoard(player1);
+    if (choice == 1){
+        addWord(player);
+        printBoard(player1);
+    }
+    if (choice == 2){
+        transformWord(player);
+        printBoard(player1);
+    }
+    else{
+        console.log(player, " passe son tour");
+    }
+
+}
+
 
 let i = 0
 let end_player_turn = false
 draw6Letters(player1);
 draw6Letters(player2);
 let init = true
+let choice = 0
 while (i!==1){
     console.log("Bienvenue au Jarnac");
     
@@ -151,12 +185,17 @@ while (i!==1){
     
     do {
         console.log(player1.hand);
+        if (init == true){
+            addWord(player1);
+            init = false;
+        }
+        else {
+            choice = action_choice();
+            action(choice, player1);
+        }
         
-        addWord(player1);
-        printBoard(player1);
-        transformWord(player1);
-        printBoard(player1);
-        end_player_turn = end_turn()
+        end_player_turn = end_turn();
+
     }while (end_player_turn !== true)
     end_player_turn = false
     do {
