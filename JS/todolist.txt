@@ -2,5 +2,6 @@ todo:
 
 afficher score
 fonction jarnac
+pouvoir echanger exactement 3 lettres de son tapis par 3 nouvelles lettres au début du tour à la place de tirer une lettre
 fin de partie (8 mots posés)
 comprendre où utiliser des async function
