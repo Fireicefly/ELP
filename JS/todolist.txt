@@ -5,5 +5,8 @@ choisir entre ajouter ou modifier un mot
 afficher tapis P1 et P2
 afficher score
 fonction jarnac
-bug : si une lettre est en double dans ma main et que j'écris un mot qui contient cette lettre alors elle sera enlevée 2 fois de ma main au lieu d'1
+bug : si une lettre est en double dans ma main et que j'écris un mot qui contient 
+cette lettre alors elle sera enlevée 2 fois de ma main au lieu d'1
+enregistrer les coups des joueurs dans un autre fichier 
 fin de partie (8 mots posés)
+comprendre où utiliser des async function
