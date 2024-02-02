@@ -1,4 +1,6 @@
 const readlineSync = require('readline-sync');
+const fs = require('fs');
+const logFile = 'log.txt';
 
 // Définir la liste des lettres et leurs valeurs
 let letterValues = {
@@ -16,14 +18,14 @@ function Player(name){
 }
 
 // Création des instances de la classe Player
-let player1 = new Player("player1");
-let player2 = new Player("player2");
+let player1 = new Player("Joueur 1");
+let player2 = new Player("Joueur 2");
 let players = [player1, player2];
 
 
 // fonction pile ou face (retourne "player1" ou "player2")
 function flipCoin() {
-  return Math.random() < 0.5 ? "player1" : "player2";
+  return Math.random() < 0.5 ? "Joueur 1" : "Joueur 2";
 }
 
 // fonction qui tire 6 lettres au hasard et les ajoute à la main du joueur
@@ -45,6 +47,11 @@ function draw1Letter(player) {
   letterValues[letter]--;
 }
 
+function printLetters(player){
+    lettres = player.hand.join(' ');
+    console.log("Lettres : " + lettres);
+}
+
 // fonction qui check si le mot est valide
 function checkWord(word, playerHand){
   if (word.length < 3) return false;
@@ -58,10 +65,30 @@ function checkWord(word, playerHand){
 
 // fonction qui affiche le plateau de jeu du joueur
 function printBoard(player){
-  console.log("Board du joueur " + player.name + " : \n");
+  console.log("Board du " + player.name + " : \n");
   for (let i = 0; i < player.board.length; i++) {
-    console.log(player.board[i]+ "\n");
+    console.log("Ligne " + parseInt(i+1) + " : " + player.board[i]+ "\n");
   }
+}
+
+// Ajoute une ligne au fichier de log, si le fichier n'existe pas, il est créé
+// Utilise
+function addLog(player, line) {
+    fs.appendFileSync(logFile, player.name + " " + line + '\n', (err) => {
+        if (err) {
+            console.error("Une erreur s'est produite lors de l'écriture dans le fichier :", err);
+        }
+    });
+}
+
+function cleanLog(callback) {
+    fs.writeFile(logFile, '', (err) => {
+        if (err) {
+            console.error("Une erreur s'est produite lors de la suppression du contenu du fichier :", err);
+            return;
+        }
+        callback();
+    });
 }
 
 // fonction qui ajoute un mot au plateau de jeu du joueur
@@ -72,6 +99,7 @@ function addWord(player){
     userInput =userInput.toUpperCase();
   } while (checkWord(userInput, player.hand) === false);
   console.log('Vous avez saisi : ' + userInput);
+  addLog(player, "a joué le mot " + userInput);
   player.board.push(userInput);
   player.justPlayedWords.push(userInput)
   player.hand = player.hand.filter(char => !userInput.split('').includes(char));
@@ -109,13 +137,16 @@ function transformWord(player){
   } while (index < 0 || index >= player.board.length || oldWord === undefined);
   
   console.log('Vous avez choisi de transformer le mot : ' + oldWord);
+  addLog(player, "a choisi de transformer le mot " + oldWord)
   
   let newWord;
-  do{
-    newWord = readlineSync.question('Entrez le nouveau mot : ');
-    newWord = newWord.toUpperCase();
-  } while (checkWordTransform(oldWord, newWord, player.hand) === false);
+    do {
+        printLetters(player);
+        newWord = readlineSync.question('Entrez le nouveau mot : ');
+        newWord = newWord.toUpperCase();
+    } while (checkWordTransform(oldWord, newWord, player.hand) === false);
   console.log('Vous avez saisi : ' + newWord);
+  addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
   player.board[index] = newWord;
   player.justPlayedWords.push(newWord)
 }
@@ -130,43 +161,47 @@ function end_turn(){
         answer = readlineSync.question('Avez-vous terminé votre tour ?');       
         
     } while (answer !== "oui" && answer !== "non");
-    if (answer =="oui"){
+    if (answer ==="oui"){
         return true;
     }
-    else{
-        return false;
-    }
+    return false;
 }
 
 function action_choice(){
     let answer;
     do {
-        answer = readlineSync.question('1 : placer un mot   2 : modifier un mot   3 : pass');       
+        answer = readlineSync.question('1 : Placer un mot   2 : Modifier un mot   3 : Passer\n');
         
     } while (answer !== "1" && answer !== "2" && answer!== "3");
-    if (answer =="1"){
+    if (answer ==="1"){
         return 1;
     }
-    if (answer =="2"){
+    if (answer ==="2"){
         return 2;
     }
-    if (answer =="3"){
+    if (answer ==="3"){
         return 3;
     }
 }
 
 function action(choice, player){
-    printBoard(player1);
-    if (choice == 1){
+    if (choice === 1){
+        printBoard(player1);
+        printLetters(player);
         addWord(player);
         printBoard(player1);
+        return 1
     }
-    if (choice == 2){
+    if (choice === 2){
+        printBoard(player1);
         transformWord(player);
         printBoard(player1);
+        return 2
     }
     else{
-        console.log(player, " passe son tour");
+        console.log(player.name, "passe son tour");
+        addLog(player, "passe son tour")
+        return 3
     }
 
 }
@@ -178,35 +213,51 @@ draw6Letters(player1);
 draw6Letters(player2);
 let init = true
 let choice = 0
-while (i!==1){
-    console.log("Bienvenue au Jarnac");
-    
-    
-    
-    do {
-        console.log(player1.hand);
-        if (init == true){
-            addWord(player1);
-            init = false;
-        }
-        else {
-            choice = action_choice();
-            action(choice, player1);
-        }
-        
-        end_player_turn = end_turn();
 
-    }while (end_player_turn !== true)
-    end_player_turn = false
-    do {
-        console.log(player2.hand);
-        addWord(player2);
-        printBoard(player2);
-        transformWord(player2);
-        printBoard(player2);
-        end_player_turn = end_turn()
-    }while (end_player_turn !== true)
 
+function game() {
+    while (i !== 1) {
+        console.log("Bienvenue au Jarnac");
+        do {
+            actionVal = 0;
+            console.log("Au tour du joueur 1");
+            printLetters(player1);
+            if (init === true) {
+                addWord(player1);
+                init = false;
+            } else {
+                choice = action_choice();
+                actionVal = action(choice, player1);
+            }
+
+            if (actionVal !== 3) {
+                end_player_turn = end_turn();
+                if (end_player_turn === true) {
+                    addLog(player1, "a terminé son tour")
+                }
+            } else {
+                end_player_turn = true
+            }
+
+
+        } while (end_player_turn !== true)
+        end_player_turn = false
+        do {
+            console.log("Au tour du joueur 2");
+            printLetters(player2);
+            addWord(player2);
+            printBoard(player2);
+            transformWord(player2);
+            printBoard(player2);
+            end_player_turn = end_turn()
+            if (end_player_turn === true) {
+                addLog(player2, "a terminé son tour")
+            }
+        } while (end_player_turn !== true)
+
+    }
 }
+
+cleanLog(game);
 
 
