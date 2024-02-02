@@ -1,2 +1,5 @@
 # Ignorer le dossier "elm-stuff"
 elm-stuff/
+node_modules/
+package-lock.json
+package.json
