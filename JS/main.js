@@ -102,7 +102,12 @@ function addWord(player){
   addLog(player, "a joué le mot " + userInput);
   player.board.push(userInput);
   player.justPlayedWords.push(userInput)
-  player.hand = player.hand.filter(char => !userInput.split('').includes(char));
+  for (const char of userInput) {
+    const index = player.hand.indexOf(char);
+    if (index !== -1) {
+      player.hand.splice(index, 1);
+    }
+  }
 }
 
 // fonction qui check si la transformation du mot est valide
@@ -110,12 +115,12 @@ function checkWordTransform(oldWord, newWord, playerHand){
   if (newWord.length < 3) return false;
   const oldWordLetters = oldWord.split('');
   const newWordLetters = newWord.split('');
-  // Vérifier que chaque lettre du nouveau mot est dans la main du joueur et était présente dans l'ancien mot
-  // for (let i = 0; i < newWordLetters.length; i++) {
-  //   if (!playerHand.includes(newWordLetters[i]) || !oldWordLetters.includes(newWordLetters[i])) {
-  //     return false;
-  //   }
-  // }
+  // Vérifier que chaque lettre du nouveau mot est dans la main du joueur ou était présente dans l'ancien mot
+  for (let i = 0; i < newWordLetters.length; i++) {
+    if (!(playerHand.includes(newWordLetters[i]) || oldWordLetters.includes(newWordLetters[i]))) {
+      return false;
+    }
+  }
   // Vérifier que chaque lettre de l'ancien mot est présente dans le nouveau mot
   for (let i = 0; i < oldWordLetters.length; i++) {
     if (!newWordLetters.includes(oldWordLetters[i])) {
@@ -149,6 +154,12 @@ function transformWord(player){
   addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
   player.board[index] = newWord;
   player.justPlayedWords.push(newWord)
+  for (const char of newWord) {
+    const index = player.hand.indexOf(char);
+    if (index !== -1) {
+      player.hand.splice(index, 1);
+    }
+  }
 }
 
 function scoreWord(word){
@@ -186,16 +197,16 @@ function action_choice(){
 
 function action(choice, player){
     if (choice === 1){
-        printBoard(player1);
+        printBoard(player);
         printLetters(player);
         addWord(player);
-        printBoard(player1);
+        printBoard(player);
         return 1
     }
     if (choice === 2){
-        printBoard(player1);
+        printBoard(player);
         transformWord(player);
-        printBoard(player1);
+        printBoard(player);
         return 2
     }
     else{
@@ -211,7 +222,8 @@ let i = 0
 let end_player_turn = false
 draw6Letters(player1);
 draw6Letters(player2);
-let init = true
+let init1 = true
+let init2 = true
 let choice = 0
 
 
@@ -219,41 +231,46 @@ function game() {
     while (i !== 1) {
         console.log("Bienvenue au Jarnac");
         do {
-            actionVal = 0;
-            console.log("Au tour du joueur 1");
-            printLetters(player1);
-            if (init === true) {
+            let actionVal = 0;
+            if (init1 === true) {
+                console.log("Au tour du joueur 1");
+                printLetters(player1);
                 addWord(player1);
-                init = false;
+                init1 = false;
             } else {
+                printLetters(player1);
                 choice = action_choice();
                 actionVal = action(choice, player1);
             }
-
-            if (actionVal !== 3) {
-                end_player_turn = end_turn();
-                if (end_player_turn === true) {
-                    addLog(player1, "a terminé son tour")
-                }
-            } else {
-                end_player_turn = true
+            if (actionVal === 3) {
+              end_player_turn = true
             }
-
 
         } while (end_player_turn !== true)
         end_player_turn = false
         do {
-            console.log("Au tour du joueur 2");
-            printLetters(player2);
-            addWord(player2);
-            printBoard(player2);
-            transformWord(player2);
-            printBoard(player2);
-            end_player_turn = end_turn()
-            if (end_player_turn === true) {
-                addLog(player2, "a terminé son tour")
-            }
+          let actionVal = 0;
+          console.log("Au tour du joueur 2");
+          printLetters(player2);
+          if (init2 === true) {
+              addWord(player2);
+              init2 = false;
+          } else {
+              choice = action_choice();
+              actionVal = action(choice, player2);
+          }
+          if (actionVal !== 3) {
+              end_player_turn = end_turn();
+              if (end_player_turn === true) {
+                  addLog(player2, "a terminé son tour")
+              }
+          } else {
+              end_player_turn = true
+          }
+
+
         } while (end_player_turn !== true)
+        end_player_turn = false
 
     }
 }
