@@ -17,11 +17,6 @@ function Player(name){
   this.firstTurn = true;
 }
 
-// Création des instances de la classe Player
-let player1 = new Player("Joueur 1");
-let player2 = new Player("Joueur 2");
-let players = [player1, player2];
-
 
 // fonction pile ou face (retourne "player1" ou "player2")
 function flipCoin() {
@@ -225,27 +220,32 @@ function action(choice, player){
 }
 
 
+// Création des instances de la classe Player
+let player1 = new Player("Joueur 1");
+let player2 = new Player("Joueur 2");
+let players = [player1, player2];
+
 let i = 0
 let end_player_turn = false
 draw6Letters(player1);
 draw6Letters(player2);
-let choice = 0
-
+let choice;
 
 function game() {
     while (i !== 1) {
-        console.log("Bienvenue au Jarnac");
-        do {
-            let actionVal = 0;
-            if (player1.firstTurn) {
-                console.log("Au tour du joueur 1");
-                printLetters(player1);
-                addWord(player1);
-                player1.firstTurn = false;
+      console.log("Bienvenue au Jarnac");
+        for (const player of players) {
+          do {
+            let actionVal;
+            if (player.firstTurn) {
+                console.log("Au tour du " + player.name + " :");
+                printLetters(player);
+                addWord(player);
+                player.firstTurn = false;
             } else {
-                printLetters(player1);
-                choice = action_choice(player1);
-                actionVal = action(choice, player1);
+                printLetters(player);
+                choice = action_choice(player);
+                actionVal = action(choice, player);
             }
             if (actionVal === 3) {
               end_player_turn = true
@@ -253,27 +253,8 @@ function game() {
 
         } while (end_player_turn !== true)
         end_player_turn = false
-
-        do {
-          let actionVal = 0;
-          if (player2.firstTurn) {
-              console.log("Au tour du joueur 2");
-              printLetters(player2);
-              addWord(player2);
-              player2.firstTurn = false;
-          } else {
-              printLetters(player2);
-              choice = action_choice(player2);
-              actionVal = action(choice, player2);
-          }
-          if (actionVal === 3) {
-            end_player_turn = true
-          }
-
-      } while (end_player_turn !== true)
-      end_player_turn = false
-
     }
+  }
 }
 
 cleanLog(game);

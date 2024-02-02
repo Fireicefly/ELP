@@ -1,6 +1,5 @@
 todo:
 
-afficher tapis P1 et P2
 afficher score
 fonction jarnac
 
