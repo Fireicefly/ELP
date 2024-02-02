@@ -14,7 +14,6 @@ function Player(name){
   this.name = name;
   this.hand = [];
   this.board = [];
-  this.justPlayedWords = [];
 }
 
 // Création des instances de la classe Player
@@ -101,13 +100,13 @@ function addWord(player){
   console.log('Vous avez saisi : ' + userInput);
   addLog(player, "a joué le mot " + userInput);
   player.board.push(userInput);
-  player.justPlayedWords.push(userInput)
   for (const char of userInput) {
     const index = player.hand.indexOf(char);
     if (index !== -1) {
       player.hand.splice(index, 1);
     }
   }
+  draw1Letter(player);
 }
 
 // fonction qui check si la transformation du mot est valide
@@ -153,7 +152,6 @@ function transformWord(player){
   console.log('Vous avez saisi : ' + newWord);
   addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
   player.board[index] = newWord;
-  player.justPlayedWords.push(newWord)
   for (const char of newWord) {
     if (!oldWord.includes(char)) {
       const index = player.hand.indexOf(char);
@@ -162,6 +160,7 @@ function transformWord(player){
       }
     }
   }
+  draw1Letter(player);
 }
 
 function scoreWord(word){

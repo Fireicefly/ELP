@@ -5,8 +5,6 @@ choisir entre ajouter ou modifier un mot
 afficher tapis P1 et P2
 afficher score
 fonction jarnac
-bug : si une lettre est en double dans ma main et que j'écris un mot qui contient 
-cette lettre alors elle sera enlevée 2 fois de ma main au lieu d'1
 
 bug : lorsque l'on transforme un mot et qu'on réécrit exactement les mêmes lettres,
 la transformation est validée alors que y'a pas de changements
