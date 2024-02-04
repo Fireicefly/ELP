@@ -8,8 +8,13 @@ import (
 	"time"
 )
 
+// Nom de l'entreprise
+const company_name = "-Remy Factory-"
+
+// Type Graph
 type Graph map[string]map[string]int
 
+// Fonction qui vérifie si une erreur est présente
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
 		fmt.Println(errorMessage, err)
@@ -17,6 +22,7 @@ func is_there_an_error(err error, errorMessage string) {
 	}
 }
 
+// Fonction qui ouvre un fichier JSON et le convertit en graphe
 func Open_Json(file_name string) Graph {
 
 	jsonData, err := os.Open(file_name)
@@ -31,6 +37,7 @@ func Open_Json(file_name string) Graph {
 	return graph
 }
 
+// Fonction qui établit une connexion avec le serveur
 func make_conn(company_name string) net.Conn {
 
 	conn, err := net.Dial("tcp", "localhost:8080")
@@ -43,7 +50,8 @@ func make_conn(company_name string) net.Conn {
 	return conn
 }
 
-func receive_json(conn net.Conn) Graph {
+// Fonction qui reçoit le graph resultat du serveur
+func receive_graph(conn net.Conn) Graph {
 
 	var data Graph
 
@@ -56,19 +64,22 @@ func receive_json(conn net.Conn) Graph {
 	return data
 }
 
-func send_json(conn net.Conn, data Graph) {
+// Fonction qui envoit le graph au serveur
+func send_graph(conn net.Conn, data Graph) {
 
 	encoder := json.NewEncoder(conn)
 	err := encoder.Encode(data)
 	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
 }
 
+// Fonction qui envoit une chaîne de caractères au serveur contenant le nom de l'entreprise
 func send_string(conn net.Conn, data string) {
 
 	_, err := fmt.Fprintln(conn, data+"\n")
 	is_there_an_error(err, "Erreur lors de l'envoi de la chaîne de caractères :")
 }
 
+// Fonction qui écrit le résultat dans un fichier JSON
 func write_json(distances Graph) {
 
 	resultJSON, err := json.Marshal(distances)
@@ -82,19 +93,19 @@ func write_json(distances Graph) {
 	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
 }
 
+// Fonction principale
 func main() {
 
 	start := time.Now()
 
-	company_name := "-Remy Factory-"
 	file_name := "generated_graph.json"
 
 	graph := Open_Json(file_name)
 	conn := make_conn(company_name)
 
-	send_json(conn, graph)
+	send_graph(conn, graph)
 
-	AllPairDistances := receive_json(conn)
+	AllPairDistances := receive_graph(conn)
 
 	write_json(AllPairDistances)
 

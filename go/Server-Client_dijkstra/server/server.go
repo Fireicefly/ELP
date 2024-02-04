@@ -16,13 +16,15 @@ const (
 	MAXWORKERS    = 8
 )
 
-// Graph représente la structure du graphe pondéré.
+// Type Graph
 type Graph map[string]map[string]int
 
+// Type Job qui contient l'ID du noeud
 type Job struct {
 	NodeID string
 }
 
+// Type Result qui contient l'ID du noeud et le dictionnaire des distances associé
 type Result struct {
 	NodeID    string
 	Distances map[string]int
@@ -37,6 +39,7 @@ type WorkerPool struct {
 	graph   Graph
 }
 
+// is_there_an_error vérifie si une erreur est présente
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
 		log.Fatal(errorMessage, err)
@@ -53,6 +56,8 @@ func NewWorkerPool(size int, graph Graph) *WorkerPool {
 	}
 }
 
+// Fonction qui applique l'algorithme de Dijkstra sur un graphe à partir d'un noeud de départ.
+// Définit en temps que méthode de WorkerPool pour pouvoir être utilisé par les travailleurs sans passer parramètre.
 func (wp *WorkerPool) Dijkstra(start string) map[string]int {
 	distances := make(map[string]int)
 	visited := make(map[string]bool)
@@ -149,6 +154,7 @@ func handleClient(conn net.Conn, cwp *WorkerPool) {
 	log.Printf("Données envoyées à %s\n", clientName)
 }
 
+// receiveJSON reçoit un graphe au format JSON.
 func receiveJSON(conn net.Conn) Graph {
 	var graph Graph
 
@@ -159,6 +165,7 @@ func receiveJSON(conn net.Conn) Graph {
 	return graph
 }
 
+// receiveString reçoit une chaîne de caractères du nom de l'entreprise.
 func receiveString(conn net.Conn) string {
 	reader := bufio.NewReader(conn)
 	data, err := reader.ReadString('\n')
@@ -169,12 +176,14 @@ func receiveString(conn net.Conn) string {
 	return data
 }
 
+// sendJSON envoit le dictionnaire resultat au format JSON.
 func sendJSON(conn net.Conn, data Graph) {
 	encoder := json.NewEncoder(conn)
 	err := encoder.Encode(data)
 	is_there_an_error(err, "Erreur lors de l'envoi des données JSON :")
 }
 
+// Fonction principale
 func main() {
 	cwp := NewWorkerPool(MAXCLIENTS, nil)
 

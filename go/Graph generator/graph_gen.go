@@ -9,10 +9,13 @@ import (
 	"time"
 )
 
+// Type Graph
 type Graph map[string]map[string]int
 
-const TAILLE = 3000
+// Taille du graphe
+const TAILLE = 500
 
+// Fonction qui vérifie si une erreur est présente
 func is_there_an_error(err error, errorMessage string) {
 	if err != nil {
 		fmt.Println(errorMessage, err)
@@ -20,7 +23,8 @@ func is_there_an_error(err error, errorMessage string) {
 	}
 }
 
-func convertToAdjacencyMap(nodes []string) Graph {
+// Fonction qui génère un graphe aléatoirement
+func BuildGraph(nodes []string) Graph {
 	adjacencyMap := make(Graph)
 
 	for _, node := range nodes {
@@ -39,6 +43,7 @@ func convertToAdjacencyMap(nodes []string) Graph {
 	return adjacencyMap
 }
 
+// Fonction qui écrit le graphe généré dans un fichier JSON
 func write_json(graph Graph) {
 
 	resultJSON, err := json.Marshal(graph)
@@ -52,6 +57,7 @@ func write_json(graph Graph) {
 	is_there_an_error(err, "Erreur lors de l'écriture dans le fichier :")
 }
 
+// Fonction principale
 func main() {
 
 	start := time.Now()
@@ -62,7 +68,7 @@ func main() {
 		nodes = append(nodes, node)
 	}
 
-	adjacencyMap := convertToAdjacencyMap(nodes)
+	adjacencyMap := BuildGraph(nodes)
 
 	write_json(adjacencyMap)
 	elapsed := time.Since(start)
