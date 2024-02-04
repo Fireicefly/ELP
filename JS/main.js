@@ -94,7 +94,6 @@ function addWord(player){
     userInput = readlineSync.question('Entrez un mot : ');
     userInput =userInput.toUpperCase();
   } while (checkWord(userInput, player.hand) === false);
-  console.log('Vous avez saisi : ' + userInput);
   addLog(player, "a joué le mot " + userInput);
   player.board.push(userInput);
   for (const char of userInput) {
@@ -155,7 +154,6 @@ function transformWord(player, jarnac = false, otherPlayer = null){
         newWord = readlineSync.question('Entrez le nouveau mot : ');
         newWord = newWord.toUpperCase();
         } while (checkWordTransform(oldWord, newWord, player.hand) === false);
-    console.log('Vous avez saisi : ' + newWord);
     if (jarnac === false) {
         addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
         player.board[index] = newWord;
@@ -209,10 +207,11 @@ function end_turn(){
 function action_choice(player, elapsedT=0){
     let answer;
     let startTime = Date.now();
+    let otherPlayer = players.filter(p => p !== player)[0];    
     do {
         answer = readlineSync.question('1 : Placer un mot   2 : Modifier un mot   3 : Passer\n');
         elapsedTime = (Date.now() + elapsedT) - startTime;
-    } while ((answer !== "1" || player.hand.length < 3) && answer !== "2" && answer!== "3" && answer.toLowerCase() !== "jarnac");
+    } while ((answer !== "1" || player.hand.length < 3) && (answer !== "2" || player.board.length < 1) && answer!== "3" && answer.toLowerCase() !== "jarnac");
     if (answer ==="1"){
         return 1;
     }
@@ -222,7 +221,7 @@ function action_choice(player, elapsedT=0){
     if (answer ==="3"){
         return 3;
     }
-    if ((answer.toLowerCase() === "jarnac") && !player.firstTurn && (elapsedTime) <= 3000){
+    if ((answer.toLowerCase() === "jarnac") && !player.firstTurn && (elapsedTime) <= 3000 && otherPlayer.board.length > 0 && otherPlayer.hand.length > 0){
         return 4;
     } else if ((answer.toLowerCase() === "jarnac") && !player.firstTurn && (elapsedTime) > 3000){
         console.log("Trop tard pour Jarnac !");
