@@ -1,12 +1,4 @@
 todo:
 
-afficher score
--------
-FONCTION JARNAC FINI, TESTEZ SI Y'A PAS DE BUGS, d'ailleurs on peut pas jarnac au 1er tour
-parce que sinon le joueur 1 peut jarnac alors que joueur 2 n'a pas encore joué du tout,
-et c'etait plus simple d'interdire le jarnac au 1er tour pour les deux joueurs
-que de l'interdire pour le joueur 1 et de le permettre pour le joueur 2 au 1er tour (et c'est plus equitable je trouve)
-----------
 pouvoir echanger exactement 3 lettres de son tapis par 3 nouvelles lettres au début du tour à la place de tirer une lettre
-fin de partie (8 mots posés)
 comprendre où utiliser des async function

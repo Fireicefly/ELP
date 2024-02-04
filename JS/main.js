@@ -161,6 +161,7 @@ function transformWord(player, jarnac = false, otherPlayer = null){
         addLog(otherPlayer, "a transformé le mot " + oldWord + " en " + newWord + " de " + player.name)
         otherPlayer.board.push(newWord);
         player.board.pop(newWord);
+
         const index = player.board.indexOf(newWord);
         if (index !== -1) {
             player.board.splice(index, 1);
@@ -193,7 +194,7 @@ function score(player){
   for (let i = 0; i < player.board.length; i++){
     player_score = player_score + player.board[i].length**2;
   }
-  console.log(player, " " , player_score)
+  console.log(player.name,":",  player_score, "points");
   
 }
 
@@ -269,6 +270,18 @@ function action(choice, player){
 
 }
 
+function testFinPartie(player){
+    if (player.board.length === 8) {
+        console.log("Fin de la partie");
+        console.log("Resultats : ");
+        printBoard(player1);
+        score(player1);
+        printBoard(player2);
+        score(player2);
+        return true;
+    }
+    return false;
+}
 
 // Création des instances de la classe Player
 let player1 = new Player("Joueur 1");
@@ -288,7 +301,6 @@ function game() {
         for (const player of players) {
           if (play){ //ca me va pas trop
 
-          
             do {
               let actionVal;
               if (player.firstTurn && !player.firstAction) {
@@ -313,12 +325,9 @@ function game() {
                   player.firstTurn = false;
                   end_player_turn = true
               }
-              if (player.board.length === 2) {                
-                play = false;
-                console.log("Fin de la partie");
-                console.log("Resultats : ");
-                score(player1);
-                score(player2);
+              if (testFinPartie(player)) {
+                  play = false;
+                  break;
               }
           } while (end_player_turn !== true)
                   end_player_turn = false
