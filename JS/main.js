@@ -15,6 +15,7 @@ function Player(name){
   this.hand = [];
   this.board = [];
   this.firstTurn = true;
+  this.firstAction = false;
 }
 
 
@@ -60,9 +61,9 @@ function checkWord(word, playerHand){
 
 // fonction qui affiche le plateau de jeu du joueur
 function printBoard(player){
-  console.log("Board du " + player.name + " : \n");
+  console.log("Board du " + player.name + " :");
   for (let i = 0; i < player.board.length; i++) {
-    console.log("Ligne " + parseInt(i+1) + " : " + player.board[i]+ "\n");
+    console.log("Ligne " + parseInt(i+1) + " : " + player.board[i]);
   }
 }
 
@@ -103,6 +104,7 @@ function addWord(player){
     }
   }
   draw1Letter(player);
+  printLetters(player);
 }
 
 // fonction qui check si la transformation du mot est valide
@@ -129,41 +131,63 @@ function checkWordTransform(oldWord, newWord, playerHand){
   return true;
 }
 
-// fonction qui transforme un mot du plateau de jeu du joueur
-function transformWord(player){
-  let index;
-  do {
-    index = readlineSync.question('Entrez la ligne du mot a transformer : ');
-    index = parseInt(index) - 1;
-    oldWord = player.board[index];
-  } while (index < 0 || index >= player.board.length || oldWord === undefined);
+// fonction qui transforme un mot du plateau de jeu du joueur, ou permet de transformer un mot du plateau de jeu de l'adversaire
+function transformWord(player, jarnac = false, otherPlayer = null){
+    let index;
+    do {
+        printBoard(player);
+        printLetters(player);
+        index = readlineSync.question('Entrez la ligne du mot a transformer : ');
+        index = parseInt(index) - 1;
+        oldWord = player.board[index];
+    } while (index < 0 || index >= player.board.length || oldWord === undefined);
+
+    console.log('Vous avez choisi de transformer le mot : ' + oldWord);
+    if (jarnac === false) {
+        addLog(player, "a choisi de transformer le mot " + oldWord)
+    } else {
+        addLog(otherPlayer, "a choisi de transformer le mot " + oldWord + " de " + player.name)
+    }
   
-  console.log('Vous avez choisi de transformer le mot : ' + oldWord);
-  addLog(player, "a choisi de transformer le mot " + oldWord)
-  
-  let newWord;
+      let newWord;
     do {
         printLetters(player);
         newWord = readlineSync.question('Entrez le nouveau mot : ');
         newWord = newWord.toUpperCase();
-    } while (checkWordTransform(oldWord, newWord, player.hand) === false);
-  console.log('Vous avez saisi : ' + newWord);
-  addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
-  player.board[index] = newWord;
-  for (const char of newWord) {
+        } while (checkWordTransform(oldWord, newWord, player.hand) === false);
+    console.log('Vous avez saisi : ' + newWord);
+    if (jarnac === false) {
+        addLog(player, "a transformé le mot " + oldWord + " en " + newWord)
+        player.board[index] = newWord;
+    } else {
+        addLog(otherPlayer, "a transformé le mot " + oldWord + " en " + newWord + " de " + player.name)
+        otherPlayer.board.push(newWord);
+        player.board.pop(newWord);
+        const index = player.board.indexOf(newWord);
+        if (index !== -1) {
+            player.board.splice(index, 1);
+        }
+    }
+
+    for (const char of newWord) {
     const countInNewWord = newWord.split(char).length - 1;
     const countInOldWord = oldWord.split(char).length - 1;
-    if (countInNewWord > countInOldWord) {
-        const excessCount = countInNewWord - countInOldWord;
-        for (let i = 0; i < excessCount; i++) {
-            const index = player.hand.indexOf(char);
-            if (index !== -1) {
-                player.hand.splice(index, 1);
+        if (countInNewWord > countInOldWord) {
+            const excessCount = countInNewWord - countInOldWord;
+            for (let i = 0; i < excessCount; i++) {
+                const index = player.hand.indexOf(char);
+                if (index !== -1) {
+                    player.hand.splice(index, 1);
+                }
             }
         }
     }
-  }
-  draw1Letter(player);
+    if (jarnac === false) {
+        draw1Letter(player);
+        return 1;
+    } else {
+        return 2;
+    }
 }
 
 function scoreWord(word){
@@ -182,12 +206,13 @@ function end_turn(){
     return false;
 }
 
-function action_choice(player){
+function action_choice(player, elapsedT=0){
     let answer;
+    let startTime = Date.now();
     do {
         answer = readlineSync.question('1 : Placer un mot   2 : Modifier un mot   3 : Passer\n');
-
-    } while ((answer !== "1" || player.hand.length < 3) && answer !== "2" && answer!== "3");
+        elapsedTime = (Date.now() + elapsedT) - startTime;
+    } while ((answer !== "1" || player.hand.length < 3) && answer !== "2" && answer!== "3" && answer.toLowerCase() !== "jarnac");
     if (answer ==="1"){
         return 1;
     }
@@ -197,6 +222,21 @@ function action_choice(player){
     if (answer ==="3"){
         return 3;
     }
+    if ((answer.toLowerCase() === "jarnac") && !player.firstTurn && (elapsedTime) <= 3000){
+        return 4;
+    } else if ((answer.toLowerCase() === "jarnac") && !player.firstTurn && (elapsedTime) > 3000){
+        console.log("Trop tard pour Jarnac !");
+        return action_choice(player, elapsedTime);
+    } else if ((answer.toLowerCase() === "jarnac") && player.firstTurn){
+        console.log("Impossible de faire un coup de Jarnac au premier tour");
+        return action_choice(player);
+    }
+}
+
+// Fonction qui effectue un coup de Jarnac
+function jarnac(player){
+    otherPlayer = players.filter(p => p !== player)[0];
+    transformWord(otherPlayer, true, player);
 }
 
 function action(choice, player){
@@ -208,15 +248,19 @@ function action(choice, player){
         return 1
     }
     if (choice === 2){
-        printBoard(player);
         transformWord(player);
         printBoard(player);
         return 2
     }
-    else{
+    if (choice === 3){
         console.log(player.name, "passe son tour");
         addLog(player, "passe son tour")
         return 3
+    }
+    if (choice === 4){
+        addLog(player, "a fait un coup de Jarnac !")
+        jarnac(player);
+        return 4
     }
 
 }
@@ -239,22 +283,29 @@ function game() {
         for (const player of players) {
           do {
             let actionVal;
-            if (player.firstTurn) {
+            if (player.firstTurn && !player.firstAction) {
                 console.log("Au tour du " + player.name + " :");
                 printLetters(player);
                 addWord(player);
-                player.firstTurn = false;
+                choice = action_choice(player);
+                actionVal = action(choice, player);
+                player.firstAction = true;
             } else {
+                console.log("Au tour du " + player.name + " :");
+                if (!player.firstTurn) {
+                    console.log("Vous avez 3 secondes pour faire un coup de Jarnac")
+                }
+                printBoard(player);
                 printLetters(player);
                 choice = action_choice(player);
                 actionVal = action(choice, player);
             }
             if (actionVal === 3) {
-              end_player_turn = true
+                player.firstTurn = false;
+                end_player_turn = true
             }
-
         } while (end_player_turn !== true)
-        end_player_turn = false
+                end_player_turn = false
     }
   }
 }
