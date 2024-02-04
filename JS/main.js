@@ -188,8 +188,13 @@ function transformWord(player, jarnac = false, otherPlayer = null){
     }
 }
 
-function scoreWord(word){
-  return word.length**2;
+function score(player){
+  let player_score = 0
+  for (let i = 0; i < player.board.length; i++){
+    player_score = player_score + player.board[i].length**2;
+  }
+  console.log(player, " " , player_score)
+  
 }
 
 function end_turn(){
@@ -270,43 +275,57 @@ let player1 = new Player("Joueur 1");
 let player2 = new Player("Joueur 2");
 let players = [player1, player2];
 
-let i = 0
+let play = true
 let end_player_turn = false
 draw6Letters(player1);
 draw6Letters(player2);
 let choice;
+console.log("Bienvenue au Jarnac");
 
 function game() {
-    while (i !== 1) {
-      console.log("Bienvenue au Jarnac");
+    while (play) {
+      
         for (const player of players) {
-          do {
-            let actionVal;
-            if (player.firstTurn && !player.firstAction) {
-                console.log("Au tour du " + player.name + " :");
-                printLetters(player);
-                addWord(player);
-                choice = action_choice(player);
-                actionVal = action(choice, player);
-                player.firstAction = true;
-            } else {
-                console.log("Au tour du " + player.name + " :");
-                if (!player.firstTurn) {
-                    console.log("Vous avez 3 secondes pour faire un coup de Jarnac")
-                }
-                printBoard(player);
-                printLetters(player);
-                choice = action_choice(player);
-                actionVal = action(choice, player);
-            }
-            if (actionVal === 3) {
-                player.firstTurn = false;
-                end_player_turn = true
-            }
-        } while (end_player_turn !== true)
-                end_player_turn = false
+          if (play){ //ca me va pas trop
+
+          
+            do {
+              let actionVal;
+              if (player.firstTurn && !player.firstAction) {
+                  console.log("\nAu tour du " + player.name + " :");
+                  printLetters(player);
+                  addWord(player);
+                  choice = action_choice(player);
+                  actionVal = action(choice, player);
+                  player.firstAction = true;
+              } else {
+                  console.log("Au tour du " + player.name + " :");
+                  if (!player.firstTurn) {
+                      draw1Letter(player);
+                      console.log("Vous avez 3 secondes pour faire un coup de Jarnac")
+                  }
+                  printBoard(player);
+                  printLetters(player);
+                  choice = action_choice(player);
+                  actionVal = action(choice, player);
+              }
+              if (actionVal === 3) {
+                  player.firstTurn = false;
+                  end_player_turn = true
+              }
+              if (player.board.length === 2) {                
+                play = false;
+                console.log("Fin de la partie");
+                console.log("Resultats : ");
+                score(player1);
+                score(player2);
+              }
+          } while (end_player_turn !== true)
+                  end_player_turn = false
+      }
     }
   }
 }
+
 
 cleanLog(game);
