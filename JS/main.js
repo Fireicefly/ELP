@@ -16,13 +16,9 @@ function Player(name){
   this.board = [];
   this.firstTurn = true;
   this.firstAction = false;
+  this.askedTrade = false;
 }
 
-
-// fonction pile ou face (retourne "player1" ou "player2")
-function flipCoin() {
-  return Math.random() < 0.5 ? "Joueur 1" : "Joueur 2";
-}
 
 // fonction qui tire 6 lettres au hasard et les ajoute à la main du joueur
 function draw6Letters(player) {
@@ -43,6 +39,7 @@ function draw1Letter(player) {
   letterValues[letter]--;
 }
 
+// fonction qui affiche les lettres de la main du joueur
 function printLetters(player){
     lettres = player.hand.join(' ');
     console.log("Lettres : " + lettres);
@@ -77,6 +74,7 @@ function addLog(player, line) {
     });
 }
 
+// Supprime le contenu du fichier de log
 function cleanLog(callback) {
     fs.writeFile(logFile, '', (err) => {
         if (err) {
@@ -189,25 +187,15 @@ function transformWord(player, jarnac = false, otherPlayer = null){
     }
 }
 
+// Fonction qui calcule le score d'un joueur
 function score(player){
   let player_score = 0
   for (let i = 0; i < player.board.length; i++){
     player_score = player_score + player.board[i].length**2;
   }
   console.log(player.name,":",  player_score, "points");
+  addLog(player, "a un score de " + player_score + " points")
   
-}
-
-function end_turn(){
-    let answer;
-    do {
-        answer = readlineSync.question('Avez-vous terminé votre tour ?');       
-        
-    } while (answer !== "oui" && answer !== "non");
-    if (answer ==="oui"){
-        return true;
-    }
-    return false;
 }
 
 function action_choice(player, elapsedT=0){
@@ -249,7 +237,6 @@ function action(choice, player){
         printBoard(player);
         printLetters(player);
         addWord(player);
-        printBoard(player);
         return 1
     }
     if (choice === 2){
@@ -283,6 +270,57 @@ function testFinPartie(player){
     return false;
 }
 
+// Echange 3 lettres
+function trade3Letters(player){
+    let lettersToTrade;
+    let valid = false;
+    let count;
+    do {
+        count = 0;
+        printLetters(player)
+        lettersToTrade = readlineSync.question('Entrez les 3 lettres que vous voulez echanger (sans espaces) : ');
+        lettersToTrade = lettersToTrade.toUpperCase();
+        for (const char of lettersToTrade) {
+            const index = player.hand.indexOf(char);
+            if (index !== -1) {
+                count++;
+            } else {
+                break;
+            }
+        }
+        if (count === 3) {
+            for (const char of lettersToTrade) {
+                const index = player.hand.indexOf(char);
+                player.hand.splice(index, 1);
+                letterValues[char]++;
+            }
+            for (let i = 0; i < 3; i++) {
+                draw1Letter(player);
+            }
+            addLog(player, "a échangé 3 lettres")
+            valid = true;
+        }
+    } while (!valid);
+}
+
+// Demande à un joueur s'il veut échanger 3 lettres, si oui, les échange, sinon, tire une lettre
+function askTrade(player){
+    let answer;
+    if (player.hand.length >= 3) {
+      do {
+        printLetters(player);
+        answer = readlineSync.question('Voulez-vous echanger 3 lettres ? (oui/non) : ');
+      } while (answer.toLowerCase() !== "oui" && answer.toLowerCase() !== "non");
+      if (answer.toLowerCase() === "oui") {
+        trade3Letters(player);
+      } else {
+        draw1Letter(player);
+      }
+    } else {
+      draw1Letter(player);
+    }
+}
+
 // Création des instances de la classe Player
 let player1 = new Player("Joueur 1");
 let player2 = new Player("Joueur 2");
@@ -299,7 +337,7 @@ function game() {
     while (play) {
       
         for (const player of players) {
-          if (play){ //ca me va pas trop
+          if (play) {
 
             do {
               let actionVal;
@@ -313,8 +351,11 @@ function game() {
               } else {
                   console.log("Au tour du " + player.name + " :");
                   if (!player.firstTurn) {
-                      draw1Letter(player);
-                      console.log("Vous avez 3 secondes pour faire un coup de Jarnac")
+                    if (!player.askedTrade) {
+                      askTrade(player);
+                      player.askedTrade = true;
+                    }
+                    console.log("Vous avez 3 secondes pour faire un coup de Jarnac")
                   }
                   printBoard(player);
                   printLetters(player);
@@ -323,7 +364,8 @@ function game() {
               }
               if (actionVal === 3) {
                   player.firstTurn = false;
-                  end_player_turn = true
+                  player.askedTrade = false;
+                  end_player_turn = true;
               }
               if (testFinPartie(player)) {
                   play = false;
