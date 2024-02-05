@@ -21,9 +21,9 @@ function Player(name){
 
 
 // fonction qui tire 6 lettres au hasard et les ajoute à la main du joueur
-function draw6Letters(player) {
+async function draw6Letters(player) {
   for (let i = 0; i < 6; i++) {
-    draw1Letter(player);
+    await draw1Letter(player);
   }
 }
 
@@ -66,8 +66,8 @@ function printBoard(player){
 
 // Ajoute une ligne au fichier de log, si le fichier n'existe pas, il est créé
 // Utilise
-function addLog(player, line) {
-    fs.appendFileSync(logFile, player.name + " " + line + '\n', (err) => {
+async function addLog(player, line) {
+    await fs.appendFileSync(logFile, player.name + " " + line + '\n', (err) => {
         if (err) {
             console.error("Une erreur s'est produite lors de l'écriture dans le fichier :", err);
         }
